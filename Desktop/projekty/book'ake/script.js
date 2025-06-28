@@ -1,7 +1,6 @@
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM fully loaded and parsed');
     
-    // Tablica do przechowywania książek
     let books = [
         {
             title: 'Przykładowa książka 1',
@@ -21,19 +20,15 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     ];
     
-    // Pobieramy elementy menu
     const menuButton = document.querySelector('.menu-btn');
     const dropdownMenu = document.querySelector('.dropdown-menu');
     
-    // Funkcja do przełączania menu
     function toggleMenu() {
         menuButton.classList.toggle('active');
         dropdownMenu.classList.toggle('active');
     }
     
-    // Funkcja do wyświetlania powiadomień
     function showNotification(message) {
-        // Sprawdzamy czy już istnieje powiadomienie
         const existingNotification = document.querySelector('.notification');
         if (existingNotification) {
             existingNotification.remove();
@@ -58,7 +53,6 @@ document.addEventListener('DOMContentLoaded', function() {
         
         document.body.appendChild(notification);
         
-        // Usuwamy powiadomienie po 3 sekundach
         setTimeout(() => {
             notification.style.animation = 'slideOutRight 0.5s ease-out';
             setTimeout(() => {
@@ -67,7 +61,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 3000);
     }
     
-    // Funkcja do renderowania książek w sekcji książek
     function renderBooks() {
         const booksList = document.querySelector('.books-list');
         if (booksList) {
@@ -89,7 +82,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 booksList.appendChild(bookItem);
             });
             
-            // Dodajemy event listenery dla przycisków usuwania
             document.querySelectorAll('.delete-book-btn').forEach(btn => {
                 btn.addEventListener('click', function() {
                     const index = parseInt(this.getAttribute('data-index'));
@@ -99,7 +91,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Funkcja do usuwania książki
     function deleteBook(index) {
         if (confirm(`Czy na pewno chcesz usunąć książkę "${books[index].title}"?`)) {
             books.splice(index, 1);
@@ -108,7 +99,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Funkcja do konwersji kodu gatunku na nazwę
     function getGenreName(genreCode) {
         const genres = {
             'fantasy': 'Fantasy',
@@ -123,14 +113,12 @@ document.addEventListener('DOMContentLoaded', function() {
         return genres[genreCode] || genreCode;
     }
     
-    // Event listener dla przycisku menu
     menuButton.addEventListener('click', function(e) {
-        e.stopPropagation(); // Zapobiega zamknięciu menu po kliknięciu
+        e.stopPropagation();
         toggleMenu();
         showNotification('Menu zostało otwarte!');
     });
 
-    // Event listener dla przycisku dodawania nowej książki
     const addNewBookBtn = document.querySelector('#addNewBookBtn');
     if(addNewBookBtn) {
         addNewBookBtn.addEventListener('click', function(e) {
@@ -144,7 +132,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Event listener dla przycisku anuluj
     const cancelBookBtn = document.querySelector('#cancelBookBtn');
     if(cancelBookBtn) {
         cancelBookBtn.addEventListener('click', function(e) {
@@ -152,20 +139,17 @@ document.addEventListener('DOMContentLoaded', function() {
             const addNewBookForm = document.querySelector('#addNewBookForm');
             if(addNewBookForm) {
                 addNewBookForm.style.display = 'none';
-                // Resetujemy formularz
                 document.getElementById('bookForm').reset();
                 showNotification('Formularz został anulowany');
             }
         });
     }
     
-    // Event listener dla formularza dodawania książki
     const bookForm = document.querySelector('#bookForm');
     if(bookForm) {
         bookForm.addEventListener('submit', function(e) {
             e.preventDefault();
             
-            // Pobieramy dane z formularza
             const formData = new FormData(this);
             const imageFile = document.getElementById('bookImage').files[0];
             
@@ -179,7 +163,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 image: null
             };
             
-            // Jeśli wybrano obrazek, konwertujemy go na base64
             if (imageFile) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
@@ -193,19 +176,15 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Funkcja do dodawania książki do tablicy
     function addBookToArray(bookData) {
         console.log('Dodawana książka:', bookData);
         
-        // Dodajemy książkę do tablicy
         books.push(bookData);
         
-        // Renderujemy książki na nowo
         renderBooks();
         
         showNotification(`Książka "${bookData.title}" została dodana!`);
         
-        // Ukrywamy formularz i resetujemy go
         const addNewBookForm = document.querySelector('#addNewBookForm');
         if(addNewBookForm) {
             addNewBookForm.style.display = 'none';
@@ -213,7 +192,6 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('bookForm').reset();
     }
     
-    // Zamykanie menu po kliknięciu poza nim
     document.addEventListener('click', function(e) {
         if (!menuButton.contains(e.target) && !dropdownMenu.contains(e.target)) {
             menuButton.classList.remove('active');
@@ -221,7 +199,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Zamykanie menu po naciśnięciu klawisza Escape
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             menuButton.classList.remove('active');
@@ -229,14 +206,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Event listenery dla elementów dropdown
     const dropdownItems = document.querySelectorAll('.dropdown-item');
     dropdownItems.forEach(item => {
         item.addEventListener('click', function(e) {
             e.preventDefault();
             console.log('Kliknięto:', this.textContent);
             
-            // Obsługa różnych sekcji
             if(this.textContent === "Dodaj nową książkę"){
                 hideAllSections();
                 const mainSection = document.querySelector('.content-main');
@@ -245,13 +220,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     showNotification('Przejdź do formularza dodawania książki!');
                 }
             } else if(this.textContent === "Książki"){
-                // Ukrywamy wszystkie sekcje
                 hideAllSections();
-                // Pokazujemy sekcję książek
                 const booksSection = document.querySelector('.content-books');
                 if(booksSection) {
                     booksSection.style.display = 'block';
-                    // Renderujemy książki przy otwarciu sekcji
                     renderBooks();
                     showNotification('Sekcja książek została otwarta!');
                 } else {
@@ -273,13 +245,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
             
-            // Zamykamy menu po kliknięciu
             menuButton.classList.remove('active');
             dropdownMenu.classList.remove('active');
         });
     });
     
-    // Funkcja do ukrywania wszystkich sekcji
     function hideAllSections() {
         const sections = document.querySelectorAll('.content-main, .content-books, .content-about, .content-contact');
         sections.forEach(section => {
@@ -289,6 +259,5 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Inicjalizacja - renderujemy książki na starcie
     renderBooks();
 });
