@@ -74,7 +74,6 @@ const App: React.FC = () => {
       <Header 
         currentSection={currentSection}
         onSectionChange={setCurrentSection}
-        showNotification={showNotification}
       />
       <main className="main-content">
         {renderSection()}

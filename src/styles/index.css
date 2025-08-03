@@ -6,9 +6,9 @@
 
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #252C3A 0%, #1A2232 100%);
   min-height: 100vh;
-  color: #2d3748;
+  color: #252C3A;
   line-height: 1.6;
 }
 
@@ -25,47 +25,71 @@ body {
 }
 
 .header {
-  background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
   border-radius: 20px;
   padding: 20px;
   margin-bottom: 30px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  text-align: center;
+  text-align: left;
+  position: relative;
+  z-index: 1000;
 }
 
 .menu {
   position: relative;
   display: inline-block;
+  z-index: 10000;
+  left: 10px;
 }
 
 .menu-btn {
-  background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%);
+  background: linear-gradient(135deg, #2DBA68 0%, #228B22 100%);
   color: white;
   border: none;
-  padding: 12px 24px;
+  padding: 12px 16px;
   border-radius: 25px;
   cursor: pointer;
   font-size: 1rem;
   font-weight: 600;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 15px rgba(45, 186, 104, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .menu-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 6px 20px rgba(45, 186, 104, 0.4);
 }
 
-.menu-btn::after {
-  content: '▼';
-  margin-left: 8px;
-  font-size: 0.8em;
-  transition: transform 0.3s ease;
+.hamburger {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 24px;
+  height: 18px;
 }
 
-.menu-btn.active::after {
-  transform: rotate(180deg);
+.hamburger span {
+  display: block;
+  width: 100%;
+  height: 3px;
+  background: white;
+  border-radius: 2px;
+  transition: all 0.3s ease;
+}
+
+.menu-btn.active .hamburger span:nth-child(1) {
+  transform: translateY(7px);
+}
+
+.menu-btn.active .hamburger span:nth-child(2) {
+  opacity: 1;
+}
+
+.menu-btn.active .hamburger span:nth-child(3) {
+  transform: translateY(-7px);
 }
 
 .dropdown-menu {
@@ -81,7 +105,7 @@ body {
   visibility: hidden;
   transform: translateY(-10px);
   transition: all 0.3s ease;
-  z-index: 9999;
+  z-index: 10001;
   margin-top: 10px;
 }
 
@@ -95,7 +119,7 @@ body {
   display: block;
   width: 100%;
   padding: 12px 20px;
-  color: #4a5568;
+  color: #252C3A;
   text-decoration: none;
   font-weight: 500;
   transition: all 0.3s ease;
@@ -103,7 +127,7 @@ body {
   background: none;
   cursor: pointer;
   text-align: left;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid rgba(37, 44, 58, 0.1);
 }
 
 .dropdown-item:last-child {
@@ -111,7 +135,7 @@ body {
 }
 
 .dropdown-item:hover {
-  background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%);
+  background: linear-gradient(135deg, #2DBA68 0%, #228B22 100%);
   color: white;
   transform: translateX(5px);
 }
@@ -127,7 +151,7 @@ body {
 }
 
 h2 {
-  color: #2d3748;
+  color: #252C3A;
   font-size: 2rem;
   margin-bottom: 20px;
   text-align: center;
@@ -135,7 +159,7 @@ h2 {
 }
 
 p {
-  color: #4a5568;
+  color: #1A2232;
   font-size: 1.1rem;
   margin-bottom: 15px;
   text-align: center;
@@ -158,7 +182,7 @@ p {
 .form-group label {
   display: block;
   margin-bottom: 8px;
-  color: #4a5568;
+  color: #252C3A;
   font-weight: 600;
   font-size: 0.95rem;
 }
@@ -179,8 +203,8 @@ p {
 .form-group select:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: #FF8C42;
-  box-shadow: 0 0 0 3px rgba(255, 140, 66, 0.1);
+  border-color: #2DBA68;
+  box-shadow: 0 0 0 3px rgba(45, 186, 104, 0.1);
   transform: translateY(-1px);
 }
 
@@ -209,8 +233,8 @@ p {
 }
 
 .rating-option:hover {
-  border-color: #FF8C42;
-  background: rgba(255, 140, 66, 0.1);
+  border-color: #2DBA68;
+  background: rgba(45, 186, 104, 0.1);
   transform: translateY(-1px);
 }
 
@@ -219,14 +243,14 @@ p {
 }
 
 .rating-option input[type="radio"]:checked + span {
-  color: #FF8C42;
+  color: #2DBA68;
   font-weight: 700;
 }
 
 .rating-option input[type="radio"]:checked ~ .rating-option {
-  border-color: #FF8C42;
-  background: rgba(255, 140, 66, 0.15);
-  box-shadow: 0 0 0 3px rgba(255, 140, 66, 0.1);
+  border-color: #2DBA68;
+  background: rgba(45, 186, 104, 0.15);
+  box-shadow: 0 0 0 3px rgba(45, 186, 104, 0.1);
 }
 
 .form-buttons {
@@ -237,7 +261,7 @@ p {
 }
 
 .submit-btn {
-  background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+  background: linear-gradient(135deg, #2DBA68 0%, #228B22 100%);
   color: white;
   border: none;
   padding: 12px 30px;
@@ -246,12 +270,12 @@ p {
   font-size: 1rem;
   font-weight: 600;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 15px rgba(45, 186, 104, 0.3);
 }
 
 .submit-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 6px 20px rgba(45, 186, 104, 0.4);
 }
 
 .books-grid {
@@ -267,7 +291,7 @@ p {
   padding: 20px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
-  border-left: 4px solid #FF8C42;
+  border-left: 4px solid #2DBA68;
 }
 
 .book-item:hover {
@@ -276,20 +300,56 @@ p {
 }
 
 .book-item h3 {
-  color: #2d3748;
+  color: #252C3A;
   margin-bottom: 10px;
   font-size: 1.3rem;
 }
 
 .book-item p {
-  color: #4a5568;
+  color: #1A2232;
   margin: 5px 0;
   font-size: 0.95rem;
   text-align: left;
 }
 
+#addNewBookBtn {
+  background: linear-gradient(135deg, #2DBA68 0%, #228B22 100%);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 25px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(45, 186, 104, 0.3);
+}
+
+#addNewBookBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(45, 186, 104, 0.4);
+}
+
+.cancel-btn {
+  background: linear-gradient(135deg, #962628 0%, #7A1E20 100%);
+  color: white;
+  border: none;
+  padding: 12px 30px;
+  border-radius: 25px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(150, 38, 40, 0.3);
+}
+
+.cancel-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(150, 38, 40, 0.4);
+}
+
 .delete-book-btn {
-  background: linear-gradient(135deg, #f44336 0%, #da190b 100%);
+  background: linear-gradient(135deg, #962628 0%, #7A1E20 100%);
   color: white;
   border: none;
   padding: 8px 16px;
@@ -298,13 +358,57 @@ p {
   font-size: 0.85rem;
   font-weight: 600;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px rgba(150, 38, 40, 0.3);
   margin-top: 10px;
 }
 
 .delete-book-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 12px rgba(150, 38, 40, 0.4);
+}
+
+.rating-table {
+  border-collapse: collapse;
+  margin-top: 5px;
+}
+
+.rating-table td {
+  padding: 8px 12px;
+  text-align: center;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  margin: 0 5px;
+  transition: all 0.3s ease;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.rating-table td:hover {
+  border-color: #2DBA68;
+  background: rgba(45, 186, 104, 0.1);
+  transform: translateY(-1px);
+}
+
+.rating-table input[type="radio"] {
+  display: none;
+}
+
+.rating-table label {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: #252C3A;
+  transition: all 0.3s ease;
+}
+
+.rating-table input[type="radio"]:checked + label {
+  color: #2DBA68;
+  font-weight: 700;
+}
+
+.rating-table input[type="radio"]:checked + td {
+  border-color: #2DBA68;
+  background: rgba(45, 186, 104, 0.15);
+  box-shadow: 0 0 0 3px rgba(45, 186, 104, 0.1);
 }
 
 .book-image-container {
@@ -342,11 +446,11 @@ p {
   position: fixed;
   top: 20px;
   right: 20px;
-  background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%);
+  background: linear-gradient(135deg, #2DBA68 0%, #228B22 100%);
   color: white;
   padding: 15px 25px;
   border-radius: 25px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 15px rgba(45, 186, 104, 0.3);
   z-index: 10000;
   animation: slideInRight 0.5s ease-out;
   font-weight: 600;
@@ -378,11 +482,11 @@ p {
 
 .about-section li {
   padding: 8px 0;
-  color: #4a5568;
+  color: #1A2232;
 }
 
 .contact-section a {
-  color: #FF8C42;
+  color: #2DBA68;
   text-decoration: none;
   font-weight: 600;
   transition: all 0.3s ease;
@@ -390,9 +494,29 @@ p {
 }
 
 .contact-section a:hover {
-  color: #FF6B35;
-  border-bottom-color: #FF8C42;
+  color: #228B22;
+  border-bottom-color: #2DBA68;
   transform: translateY(-1px);
+}
+
+.form-group input[type="file"] {
+  padding: 10px;
+  border: 2px dashed #e2e8f0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.form-group input[type="file"]:hover {
+  border-color: #2DBA68;
+  background: rgba(45, 186, 104, 0.05);
+}
+
+.form-group input[type="file"]:focus {
+  outline: none;
+  border-color: #2DBA68;
+  box-shadow: 0 0 0 3px rgba(45, 186, 104, 0.1);
 }
 
 @keyframes slideIn {

@@ -7,7 +7,7 @@ const About: React.FC = () => {
       <p>Jesteśmy zespołem programistów, którzy tworzą aplikację do zarządzania książkami.</p>
       <p>Nasza aplikacja pozwala na:</p>
       <ul>
-        <li>Dodawanie nowych książek do kolekcji</li>
+<li>Dodawanie nowych książek do kolekcji</li>
         <li>Przeglądanie listy książek</li>
         <li>Ocenianie książek</li>
         <li>Dodawanie opisów i zdjęć</li>

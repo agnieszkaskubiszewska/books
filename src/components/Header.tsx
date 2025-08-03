@@ -5,35 +5,18 @@ type Section = 'main' | 'books' | 'about' | 'contact';
 interface HeaderProps {
   currentSection: Section;
   onSectionChange: (section: Section) => void;
-  showNotification: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ currentSection, onSectionChange, showNotification }) => {
+const Header: React.FC<HeaderProps> = ({ currentSection, onSectionChange }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const handleMenuClick = () => {
     setIsMenuOpen(!isMenuOpen);
-    showNotification('Menu zostało otwarte!');
   };
 
   const handleSectionClick = (section: Section) => {
     onSectionChange(section);
     setIsMenuOpen(false);
-    
-    switch (section) {
-      case 'main':
-        showNotification('Przejdź do formularza dodawania książki!');
-        break;
-      case 'books':
-        showNotification('Sekcja książek została otwarta!');
-        break;
-      case 'about':
-        showNotification('Sekcja "O nas" została otwarta!');
-        break;
-      case 'contact':
-        showNotification('Sekcja kontakt została otwarta!');
-        break;
-    }
   };
 
   return (
@@ -44,7 +27,11 @@ const Header: React.FC<HeaderProps> = ({ currentSection, onSectionChange, showNo
             className={`menu-btn ${isMenuOpen ? 'active' : ''}`}
             onClick={handleMenuClick}
           >
-            Menu
+            <div className="hamburger">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
           </button>
           <div className={`dropdown-menu ${isMenuOpen ? 'active' : ''}`}>
             <button 
