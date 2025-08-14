@@ -28,4 +28,6 @@ export interface NotificationProps {
   message: string;
   type?: 'success' | 'error' | 'info';
   onClose: () => void;
-} 
+}
+
+export type Section = 'main' | 'books' | 'about' | 'contact' | 'welcome' | 'login'; 

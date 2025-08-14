@@ -5,9 +5,9 @@ import AddBookForm from './components/AddBookForm';
 import About from './components/About';
 import Contact from './components/Contact';
 import Notification from './components/Notification';
-import { Book } from './types';
-
-type Section = 'main' | 'books' | 'about' | 'contact';
+import Welcome from './components/Welcome';
+import LoginPage from './components/LoginPage';
+import { Book, Section } from './types';
 
 const App: React.FC = () => {
   const [books, setBooks] = useState<Book[]>([
@@ -31,8 +31,10 @@ const App: React.FC = () => {
     }
   ]);
 
-  const [currentSection, setCurrentSection] = useState<Section>('main');
+  const [currentSection, setCurrentSection] = useState<Section>('welcome');
   const [notification, setNotification] = useState<{ message: string; type?: 'success' | 'error' | 'info' } | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [user, setUser] = useState<{ name: string; email: string } | null>(null);
 
   const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     setNotification({ message, type });
@@ -56,6 +58,24 @@ const App: React.FC = () => {
     }
   };
 
+  const handleLogin = (email: string, password: string) => {
+    const mockUser = {
+      name: email.split('@')[0],
+      email: email
+    };
+    
+    setUser(mockUser);
+    setIsLoggedIn(true);
+    setCurrentSection('welcome');
+    showNotification(`Witaj ${mockUser.name}! Zostałeś zalogowany.`);
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    setIsLoggedIn(false);
+    showNotification('Zostałeś wylogowany.');
+  };
+
   const renderSection = () => {
     switch (currentSection) {
       case 'books':
@@ -64,6 +84,10 @@ const App: React.FC = () => {
         return <About />;
       case 'contact':
         return <Contact />;
+      case 'welcome':
+        return <Welcome />;
+      case 'login':
+        return <LoginPage onLogin={handleLogin} onBack={() => setCurrentSection('welcome')} />;
       default:
         return <AddBookForm onAddBook={addBook} />;
     }
@@ -74,6 +98,9 @@ const App: React.FC = () => {
       <Header 
         currentSection={currentSection}
         onSectionChange={setCurrentSection}
+        user={user}
+        isLoggedIn={isLoggedIn}
+        onLogout={handleLogout}
       />
       <main className="main-content">
         {renderSection()}
