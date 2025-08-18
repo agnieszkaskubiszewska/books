@@ -110,9 +110,6 @@ const Header: React.FC<HeaderProps> = ({ currentSection, onSectionChange, user, 
                 <button className="user-menu-item" onClick={() => onSectionChange('login')}>
                   Zaloguj się
                 </button>
-                <button className="user-menu-item">
-                  Zarejestruj się
-                </button>
               </>
             )}
           </div>
