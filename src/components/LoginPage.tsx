@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { signInWithEmail, signUpWithEmail } from '../supabase';
 import '../styles/login.css';
 
@@ -14,6 +15,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack }) => {
   const [error, setError] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,6 +44,7 @@ const { user } = await signUpWithEmail(email, password);
       const { user } = await signInWithEmail(email, password);
       if (user) {
         onLogin(email, password);
+        navigate('/');
       }
     }
     } catch (err:any) {
@@ -63,9 +66,11 @@ setError(err.message || 'There are some issues');
 <div className="log-group">
 <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required/>
 </div> 
+{isSignUp && (
 <div className="log-group">
-<input type="password" placeholder="Confirm Password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required={isSignUp}/>
+<input type="password" placeholder="Confirm Password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required/>
 </div>
+)}
 {error && <div className="error-messages">{error}</div>}
 <button type="submit" disabled={isLoading}>
 {isLoading ? 'Loading...' : isSignUp ? 'Create Account' : 'Login'}
