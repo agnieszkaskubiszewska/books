@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Header from './components/Header';
 import BookList from './components/BookList';
 import AddBookForm from './components/AddBookForm';
@@ -76,43 +77,36 @@ const App: React.FC = () => {
     showNotification('Zostałeś wylogowany.');
   };
 
-  const renderSection = () => {
-    switch (currentSection) {
-      case 'books':
-        return <BookList books={books} onDeleteBook={deleteBook} />;
-      case 'about':
-        return <About />;
-      case 'contact':
-        return <Contact />;
-      case 'welcome':
-        return <Welcome />;
-      case 'login':
-        return <LoginPage onLogin={handleLogin} onBack={() => setCurrentSection('welcome')} />;
-      default:
-        return <AddBookForm onAddBook={addBook} />;
-    }
-  };
-
   return (
-    <div className="app">
-      <Header 
-        currentSection={currentSection}
-        onSectionChange={setCurrentSection}
-        user={user}
-        isLoggedIn={isLoggedIn}
-        onLogout={handleLogout}
-      />
-      <main className="main-content">
-        {renderSection()}
-      </main>
-      {notification && (
-        <Notification
-          message={notification.message}
-          type={notification.type}
-          onClose={() => setNotification(null)}
+    <Router>
+      <div className="app">
+        <Header 
+          currentSection={currentSection}
+          onSectionChange={setCurrentSection}
+          user={user}
+          isLoggedIn={isLoggedIn}
+          onLogout={handleLogout}
         />
-      )}
-    </div>
+        <main className="main-content">
+          <Routes>
+            <Route path="/" element={<Welcome />} />
+            <Route path="/login" element={<LoginPage onLogin={handleLogin} onBack={() => window.history.back()} />} />
+            <Route path="/add-book" element={isLoggedIn ? <AddBookForm onAddBook={addBook} /> : <Navigate to="/login" />} />
+            <Route path="/books" element={isLoggedIn ? <BookList books={books} onDeleteBook={deleteBook} /> : <Navigate to="/login" />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="*" element={<Navigate to="/" />} />
+          </Routes>
+        </main>
+        {notification && (
+          <Notification
+            message={notification.message}
+            type={notification.type}
+            onClose={() => setNotification(null)}
+          />
+        )}
+      </div>
+    </Router>
   );
 };
 
