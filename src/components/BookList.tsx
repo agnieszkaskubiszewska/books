@@ -4,9 +4,10 @@ import { Book, Genre } from '../types';
 interface BookListProps {
   books: Book[];
   onDeleteBook: (id: string) => void;
+  isLoggedIn: boolean;
 }
 
-const BookList: React.FC<BookListProps> = ({ books, onDeleteBook }) => {
+const BookList: React.FC<BookListProps> = ({ books, onDeleteBook, isLoggedIn }) => {
   const getGenreName = (genre: Genre): string => {
     const genres: Record<Genre, string> = {
       'fantasy': 'Fantasy',
@@ -56,12 +57,14 @@ const BookList: React.FC<BookListProps> = ({ books, onDeleteBook }) => {
             {book.description && (
               <p><strong>Opis:</strong> {book.description}</p>
             )}
-            <button 
-              className="delete-book-btn"
-              onClick={() => onDeleteBook(book.id)}
-            >
-              Usuń
-            </button>
+            {isLoggedIn && (
+              <button 
+                className="delete-book-btn"
+                onClick={() => onDeleteBook(book.id)}
+              >
+                Usuń
+              </button>
+            )}
           </div>
         ))}
       </div>

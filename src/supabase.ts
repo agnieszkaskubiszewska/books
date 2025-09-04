@@ -43,3 +43,11 @@ export const signInWithEmail = async (email: string, password: string) => {
   export const getCurrentUser = () => {
     return supabase.auth.getUser()
   }
+  
+  export const resetPassword = async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email)
+    
+    if (error) {
+      throw new Error(error.message)
+    }
+  }

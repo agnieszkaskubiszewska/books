@@ -55,52 +55,52 @@ const Header: React.FC<HeaderProps> = ({ currentSection, onSectionChange, user, 
   return (
     <header className="header">
       <div className="container">
-        {isLoggedIn && (
-          <div className="menu">
+        <div className="menu">
+          <button 
+            className={`menu-btn ${isMenuOpen ? 'active' : ''}`}
+            onClick={handleMenuClick}
+          >
+            <div className="hamburger">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+          </button>
+          <div className={`dropdown-menu ${isMenuOpen ? 'active' : ''}`}>
             <button 
-              className={`menu-btn ${isMenuOpen ? 'active' : ''}`}
-              onClick={handleMenuClick}
+              className="dropdown-item"
+              onClick={() => handleSectionClick('welcome')}
             >
-              <div className="hamburger">
-                <span></span>
-                <span></span>
-                <span></span>
-              </div>
+              Strona główna
             </button>
-            <div className={`dropdown-menu ${isMenuOpen ? 'active' : ''}`}>
-              <button 
-                className="dropdown-item"
-                onClick={() => handleSectionClick('welcome')}
-              >
-                Strona główna
-              </button>
+            {isLoggedIn && (
               <button 
                 className="dropdown-item"
                 onClick={() => handleSectionClick('main')}
               >
                 Dodaj nową książkę
               </button>
-              <button 
-                className="dropdown-item"
-                onClick={() => handleSectionClick('books')}
-              >
-                Książki
-              </button>
-              <button 
-                className="dropdown-item"
-                onClick={() => handleSectionClick('about')}
-              >
-                O nas
-              </button>
-              <button 
-                className="dropdown-item"
-                onClick={() => handleSectionClick('contact')}
-              >
-                Kontakt
-              </button>
-            </div>
+            )}
+            <button 
+              className="dropdown-item"
+              onClick={() => handleSectionClick('books')}
+            >
+              Książki
+            </button>
+            <button 
+              className="dropdown-item"
+              onClick={() => handleSectionClick('about')}
+            >
+              O nas
+            </button>
+            <button 
+              className="dropdown-item"
+              onClick={() => handleSectionClick('contact')}
+            >
+              Kontakt
+            </button>
           </div>
-        )}
+        </div>
         
         <div className="user-profile">
           <button 
