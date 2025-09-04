@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { signInWithEmail, signUpWithEmail } from '../supabase';
+import { resetPassword } from '../supabase';
 import '../styles/login.css';
 
 interface LoginPageProps {
@@ -15,6 +15,9 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack }) => {
   const [error, setError] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetMessage, setResetMessage] = useState('');
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -33,56 +36,126 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack }) => {
           setIsLoading(false);
           return;
         }
-        //rejestracja 
-const { user } = await signUpWithEmail(email, password);
-      if (user) {
-        setError('Bravo! You set up new account');
-        setIsSignUp(false);
-      }
-    } else {
-      //LOGOWANIE
-      const { user } = await signInWithEmail(email, password);
-      if (user) {
+        setError('Rejestracja nie jest jeszcze dostępna');
+        setIsLoading(false);
+        return;
+      } else {
+        //LOGOWANIE - przekazujemy do App.tsx
         onLogin(email, password);
         navigate('/');
       }
-    }
     } catch (err:any) {
-      console.log('bład :', err);
-setError(err.message || 'There are some issues');
+      console.log('błąd :', err);
+      setError(err.message || 'There are some issues');
     } finally {
-  setIsLoading(false);
+      setIsLoading(false);
     }
   };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetMessage('');
+    setIsLoading(true);
+
+    try {
+      await resetPassword(resetEmail);
+      setResetMessage('Sprawdź swoją skrzynkę email - wysłaliśmy link do resetowania hasła!');
+      setResetEmail('');
+    } catch (err: any) {
+      setResetMessage(`Błąd: ${err.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (showResetPassword) {
+    return (
+      <div className="login-page">
+        <div className="login-container">
+          <h2>Resetowanie hasła</h2>
+          <form onSubmit={handleResetPassword}>
+            <div className="log-group">
+              <input 
+                type="email" 
+                placeholder="Wprowadź swój email" 
+                value={resetEmail} 
+                onChange={(e) => setResetEmail(e.target.value)} 
+                required
+              />
+            </div>
+            {resetMessage && (
+              <div className={`reset-message ${resetMessage.includes('Błąd') ? 'error' : 'success'}`}>
+                {resetMessage}
+              </div>
+            )}
+            <button type="submit" disabled={isLoading}>
+              {isLoading ? 'Wysyłanie...' : 'Wyślij link resetujący'}
+            </button>
+          </form>
+          <div className="log-form-footer">
+            <button 
+              type="button" 
+              onClick={() => {
+                setShowResetPassword(false);
+                setResetMessage('');
+                setResetEmail('');
+              }}
+              className="toggle-button"
+            >
+              Wróć do logowania
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="login-page">
       <div className="login-container">
         <h2>{isSignUp ? 'Rejestracja' : 'Logowanie'}</h2>
-    <form onSubmit={ handleSubmit}>
-<div className="log-group">
-  <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required/>
-</div>
-<div className="log-group">
-<input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required/>
-</div> 
-{isSignUp && (
-<div className="log-group">
-<input type="password" placeholder="Confirm Password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required/>
-</div>
-)}
-{error && <div className="error-messages">{error}</div>}
-<button type="submit" disabled={isLoading}>
-{isLoading ? 'Loading...' : isSignUp ? 'Create Account' : 'Login'}
-</button>
-    </form>
-<div className="log-form-footer">
-<button type="button" onClick={() =>{setIsSignUp(!isSignUp); setConfirmPassword('')}}
-  className="toggle-button">
-
-  {isSignUp ? 'Masz juz konto człowieku' : 'Nie masz jeszcze konta'}
-  </button>
-</div>
+        <form onSubmit={handleSubmit}>
+          <div className="log-group">
+            <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required/>
+          </div>
+          <div className="log-group">
+            <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required/>
+          </div> 
+          {isSignUp && (
+            <div className="log-group">
+              <input type="password" placeholder="Confirm Password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required/>
+            </div>
+          )}
+          {error && <div className="error-messages">{error}</div>}
+          <button type="submit" disabled={isLoading}>
+            {isLoading ? 'Loading...' : isSignUp ? 'Create Account' : 'Login'}
+          </button>
+        </form>
+        <div className="log-form-footer">
+          <button 
+            type="button" 
+            onClick={() => {
+              setIsSignUp(!isSignUp); 
+              setConfirmPassword('');
+              setError('');
+            }}
+            className="toggle-button"
+          >
+            {isSignUp ? 'Masz już konto?' : 'Nie masz jeszcze konta?'}
+          </button>
+          {!isSignUp && (
+            <button 
+              type="button" 
+              onClick={() => {
+                setShowResetPassword(true);
+                setError('');
+              }}
+              className="forgot-password-link"
+            >
+              Zapomniałeś hasła?
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
