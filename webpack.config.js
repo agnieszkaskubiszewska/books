@@ -1,6 +1,6 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
-const Dotenv = require('dotenv-webpack');
+const webpack = require('webpack'); // dodaj to
 
 module.exports = {
   entry: './src/index.tsx',
@@ -33,7 +33,10 @@ module.exports = {
     new HtmlWebpackPlugin({
       template: './public/index.html',
     }),
-    new Dotenv(),
+    new webpack.DefinePlugin({
+      'process.env.REACT_APP_SUPABASE_URL': JSON.stringify(process.env.REACT_APP_SUPABASE_URL),
+      'process.env.REACT_APP_SUPABASE_ANON_KEY': JSON.stringify(process.env.REACT_APP_SUPABASE_ANON_KEY),
+    }),
   ],
   devServer: {
     static: {
@@ -43,4 +46,4 @@ module.exports = {
     port: 3000,
     hot: true,
   },
-}; 
+};

@@ -34,7 +34,6 @@
     "@babel/preset-typescript": "^7.27.1",
     "babel-loader": "^9.1.0",
     "css-loader": "^6.11.0",
-    "dotenv-webpack": "^8.1.1",
     "html-webpack-plugin": "^5.5.0",
     "style-loader": "^3.3.4",
     "ts-loader": "^9.5.2",
