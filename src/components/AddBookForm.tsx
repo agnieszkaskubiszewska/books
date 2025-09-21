@@ -33,7 +33,11 @@ const AddBookForm: React.FC<AddBookFormProps> = ({ onAddBook }) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'year' ? parseInt(value) || new Date().getFullYear() : value
+      [name]: name === 'year'
+        ? (parseInt(value) || new Date().getFullYear())
+        : name === 'rating'
+          ? (value ? parseInt(value) : undefined)
+          : value
     }));
   };
 

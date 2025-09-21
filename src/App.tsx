@@ -8,31 +8,12 @@ import Contact from './components/Contact';
 import Notification from './components/Notification';
 import Welcome from './components/Welcome';
 import LoginPage from './components/LoginPage';
-import { Book, Section } from './types';
+import { Book, Section, Genre } from './types';
 import { supabase } from './supabase';
 
 const AppContent: React.FC = () => {
   const navigate = useNavigate();
-  const [books, setBooks] = useState<Book[]>([
-    {
-      id: '1',
-      title: 'Przykładowa książka 1',
-      author: 'Jan Kowalski',
-      year: 2023,
-      genre: 'fantasy',
-      rating: 4,
-      description: 'Przykładowy opis książki'
-    },
-    {
-      id: '2',
-      title: 'Przykładowa książka 2',
-      author: 'Anna Nowak',
-      year: 2022,
-      genre: 'thriller',
-      rating: 5,
-      description: 'Kolejny przykładowy opis'
-    }
-  ]);
+  const [books, setBooks] = useState<Book[]>([]);
 
   const [currentSection, setCurrentSection] = useState<Section>('welcome');
   const [notification, setNotification] = useState<{ message: string; type?: 'success' | 'error' | 'info' } | null>(null);
@@ -81,25 +62,100 @@ const AppContent: React.FC = () => {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Pobierz książki z bazy danych Supabase
+  useEffect(() => {
+    const fetchBooks = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('books')
+          .select('id,title,author,description,year,genre,rating,image,created_at');
+
+        if (error) {
+          console.error('Error fetching books:', error);
+          showNotification(`Błąd pobierania książek: ${error.message}`, 'error');
+          return;
+        }
+
+        const mapped: Book[] = (data || []).map((row: any) => ({
+          id: String(row.id),
+          title: row.title,
+          author: row.author,
+          description: row.description ?? '',
+          year: typeof row.year === 'number' ? row.year : (row.created_at ? new Date(row.created_at).getFullYear() : new Date().getFullYear()),
+          genre: (row.genre as Genre) ?? ('other' as Genre),
+          rating: row.rating ?? undefined,
+          image: row.image ?? undefined,
+        }));
+
+        setBooks(mapped);
+      } catch (err: any) {
+        console.error('Unexpected error fetching books:', err);
+        showNotification('Wystąpił nieoczekiwany błąd podczas pobierania książek', 'error');
+      }
+    };
+
+    fetchBooks();
+  }, []);
+
   const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 3000);
   };
 
-  const addBook = (book: Omit<Book, 'id'>) => {
-    const newBook: Book = {
-      ...book,
-      id: Date.now().toString()
-    };
-    setBooks(prev => [...prev, newBook]);
-    showNotification(`Książka "${book.title}" została dodana!`);
+  const addBook = async (book: Omit<Book, 'id'>) => {
+    try {
+      const { data, error } = await supabase
+        .from('books')
+        .insert([{ 
+          title: book.title, 
+          author: book.author, 
+          description: book.description,
+          year: book.year,
+          genre: book.genre,
+          rating: book.rating ?? null,
+          image: book.image ?? null,
+        }])
+        .select()
+        .single();
+
+      if (error) {
+        showNotification(`Błąd dodawania książki: ${error.message}`, 'error');
+        return;
+      }
+
+      const inserted: Book = {
+        id: String(data.id),
+        title: data.title,
+        author: data.author,
+        description: data.description ?? '',
+        year: data.created_at ? new Date(data.created_at).getFullYear() : new Date().getFullYear(),
+        genre: 'other',
+      };
+
+      setBooks(prev => [...prev, inserted]);
+      showNotification(`Książka "${inserted.title}" została dodana!`);
+    } catch (err: any) {
+      console.error('Add book error:', err);
+      showNotification('Wystąpił błąd podczas dodawania książki', 'error');
+    }
   };
 
-  const deleteBook = (id: string) => {
+  const deleteBook = async (id: string) => {
     const bookToDelete = books.find(book => book.id === id);
-    if (bookToDelete && window.confirm(`Czy na pewno chcesz usunąć książkę "${bookToDelete.title}"?`)) {
+    if (!bookToDelete) return;
+    if (!window.confirm(`Czy na pewno chcesz usunąć książkę "${bookToDelete.title}"?`)) return;
+
+    try {
+      const { error } = await supabase.from('books').delete().eq('id', id);
+      if (error) {
+        showNotification(`Błąd usuwania: ${error.message}`, 'error');
+        return;
+      }
       setBooks(prev => prev.filter(book => book.id !== id));
       showNotification('Książka została usunięta!');
+    } catch (err: any) {
+      console.error('Delete book error:', err);
+      showNotification('Wystąpił błąd podczas usuwania książki', 'error');
     }
   };
 
