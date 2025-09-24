@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { resetPassword } from '../supabase';
+import { resetPassword, signInWithEmail, signUpWithEmail } from '../supabase';
 import '../styles/login.css';
 
 interface LoginPageProps {
@@ -13,6 +13,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack }) => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showResetPassword, setShowResetPassword] = useState(false);
@@ -23,11 +24,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
     setIsLoading(true);
-
-    console.log('isSignUp', isSignUp);
-    console.log('email', email);
-    console.log('password', password);
 
     try {
       if (isSignUp) {
@@ -36,13 +34,22 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack }) => {
           setIsLoading(false);
           return;
         }
-        setError('Rejestracja nie jest jeszcze dostępna');
-        setIsLoading(false);
-        return;
+        const emailTrimmed = email.trim();
+const { user } = await signUpWithEmail(emailTrimmed, password);
+if (user) {
+setSuccess('Check your email for verification');
+  setError('');
+  setIsSignUp(false);
+  setPassword('');
+  setConfirmPassword('');
+    }
       } else {
-        //LOGOWANIE - przekazujemy do App.tsx
-        onLogin(email, password);
-        navigate('/');
+        const emailTrimmed = email.trim();
+        const { user } = await signInWithEmail(emailTrimmed, password);
+        if (user) {
+          onLogin(emailTrimmed, password);
+          navigate('/');
+        }
       }
     } catch (err:any) {
       console.log('błąd :', err);
@@ -116,17 +123,18 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack }) => {
         <h2>{isSignUp ? 'Rejestracja' : 'Logowanie'}</h2>
         <form onSubmit={handleSubmit}>
           <div className="log-group">
-            <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required/>
+            <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required/>
           </div>
           <div className="log-group">
-            <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required/>
+            <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete={isSignUp ? 'new-password' : 'current-password'} required/>
           </div> 
           {isSignUp && (
             <div className="log-group">
-              <input type="password" placeholder="Confirm Password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required/>
+              <input type="password" placeholder="Confirm Password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} autoComplete="new-password" required/>
             </div>
           )}
           {error && <div className="error-messages">{error}</div>}
+          {success && <div className="success-message">{success}</div>}
           <button type="submit" disabled={isLoading}>
             {isLoading ? 'Loading...' : isSignUp ? 'Create Account' : 'Login'}
           </button>
@@ -138,6 +146,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack }) => {
               setIsSignUp(!isSignUp); 
               setConfirmPassword('');
               setError('');
+              setSuccess('');
             }}
             className="toggle-button"
           >
