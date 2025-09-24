@@ -220,7 +220,7 @@ const AppContent: React.FC = () => {
       />
       <main className="main-content">
         <Routes>
-          <Route path="/" element={<Welcome />} />
+          <Route path="/" element={<Welcome isLoggedIn={isLoggedIn} />} />
           <Route path="/login" element={<LoginPage onLogin={handleLogin} onBack={() => navigate('/')} />} />
           <Route path="/add-book" element={isLoggedIn ? <AddBookForm onAddBook={addBook} /> : <Navigate to="/login" />} />
           <Route path="/books" element={<BookList books={books} onDeleteBook={deleteBook} isLoggedIn={isLoggedIn} />} />

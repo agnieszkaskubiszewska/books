@@ -71,33 +71,33 @@ const Header: React.FC<HeaderProps> = ({ currentSection, onSectionChange, user, 
               className="dropdown-item"
               onClick={() => handleSectionClick('welcome')}
             >
-              Strona główna
+              Home
             </button>
             {isLoggedIn && (
               <button 
                 className="dropdown-item"
                 onClick={() => handleSectionClick('main')}
               >
-                Dodaj nową książkę
+                Add a book
               </button>
             )}
             <button 
               className="dropdown-item"
               onClick={() => handleSectionClick('books')}
             >
-              Książki
+              Books
             </button>
             <button 
               className="dropdown-item"
               onClick={() => handleSectionClick('about')}
             >
-              O nas
+              About
             </button>
             <button 
               className="dropdown-item"
               onClick={() => handleSectionClick('contact')}
             >
-              Kontakt
+              Contact
             </button>
           </div>
         </div>
