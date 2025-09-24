@@ -37,8 +37,8 @@ const BookList: React.FC<BookListProps> = ({ books, onDeleteBook, isLoggedIn }) 
 
   return (
     <div className="book-list">
-      <h2>Książki</h2>
-      <p>Tutaj znajdziesz listę dostępnych książek.</p>
+      <h2>Books</h2>
+<p>Available books.</p>
       <div className="books-grid">
         {books.map(book => (
           <div key={book.id} className="book-item">
