@@ -36,6 +36,7 @@
     "@babel/preset-react": "^7.22.0",
     "@babel/preset-typescript": "^7.27.1",
     "babel-loader": "^9.1.0",
+    "copy-webpack-plugin": "^13.0.1",
     "css-loader": "^6.11.0",
     "dotenv": "^17.2.2",
     "drizzle-kit": "^0.31.4",
