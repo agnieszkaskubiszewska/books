@@ -52,7 +52,7 @@ setSuccess('Check your email for verification');
         }
       }
     } catch (err:any) {
-      console.log('błąd :', err);
+    console.log('error in login page:', err);
       setError(err.message || 'There are some issues');
     } finally {
       setIsLoading(false);
@@ -66,10 +66,10 @@ setSuccess('Check your email for verification');
 
     try {
       await resetPassword(resetEmail);
-      setResetMessage('Sprawdź swoją skrzynkę email - wysłaliśmy link do resetowania hasła!');
+  setResetMessage('Check your email for password reset');
       setResetEmail('');
     } catch (err: any) {
-      setResetMessage(`Błąd: ${err.message}`);
+      setResetMessage(`Error: ${err.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -79,12 +79,12 @@ setSuccess('Check your email for verification');
     return (
       <div className="login-page">
         <div className="login-container">
-          <h2>Resetowanie hasła</h2>
+          <h2>Reset Password</h2>
           <form onSubmit={handleResetPassword}>
             <div className="log-group">
               <input 
                 type="email" 
-                placeholder="Wprowadź swój email" 
+                placeholder="Enter your email" 
                 value={resetEmail} 
                 onChange={(e) => setResetEmail(e.target.value)} 
                 required
@@ -96,7 +96,7 @@ setSuccess('Check your email for verification');
               </div>
             )}
             <button type="submit" disabled={isLoading}>
-              {isLoading ? 'Wysyłanie...' : 'Wyślij link resetujący'}
+              {isLoading ? 'Sending...' : 'Send password reset link'}
             </button>
           </form>
           <div className="log-form-footer">
@@ -109,7 +109,7 @@ setSuccess('Check your email for verification');
               }}
               className="toggle-button"
             >
-              Wróć do logowania
+              Back to login
             </button>
           </div>
         </div>
@@ -120,13 +120,14 @@ setSuccess('Check your email for verification');
   return (
     <div className="login-page">
       <div className="login-container">
-        <h2>{isSignUp ? 'Rejestracja' : 'Logowanie'}</h2>
+        <h2>{isSignUp ? 'Registration' : 'Login'}</h2>
         <form onSubmit={handleSubmit}>
           <div className="log-group">
             <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required/>
+            <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete={isSignUp ? 'new-password' : 'current-password'} required/>
           </div>
           <div className="log-group">
-            <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete={isSignUp ? 'new-password' : 'current-password'} required/>
+            <input type="password" placeholder="Confirm Password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} autoComplete="new-password" required/>
           </div> 
           {isSignUp && (
             <div className="log-group">
@@ -136,7 +137,7 @@ setSuccess('Check your email for verification');
           {error && <div className="error-messages">{error}</div>}
           {success && <div className="success-message">{success}</div>}
           <button type="submit" disabled={isLoading}>
-            {isLoading ? 'Loading...' : isSignUp ? 'Create Account' : 'Login'}
+        {isLoading ? 'Loading...' : isSignUp ? 'Create Account' : 'Login'}
           </button>
         </form>
         <div className="log-form-footer">
@@ -150,7 +151,7 @@ setSuccess('Check your email for verification');
             }}
             className="toggle-button"
           >
-            {isSignUp ? 'Masz już konto?' : 'Nie masz jeszcze konta?'}
+            {isSignUp ? 'You already have an account?' : 'You don\'t have an account?'}
           </button>
           {!isSignUp && (
             <button 
@@ -161,7 +162,7 @@ setSuccess('Check your email for verification');
               }}
               className="forgot-password-link"
             >
-              Zapomniałeś hasła?
+              Forgot your password?
             </button>
           )}
         </div>
