@@ -23,10 +23,10 @@ const AddBookForm: React.FC<AddBookFormProps> = ({ onAddBook }) => {
     { value: 'thriller' as Genre, label: 'Thriller' },
     { value: 'romance' as Genre, label: 'Romans' },
     { value: 'sci-fi' as Genre, label: 'Science Fiction' },
-    { value: 'mystery' as Genre, label: 'Kryminał' },
-    { value: 'biography' as Genre, label: 'Biografia' },
-    { value: 'history' as Genre, label: 'Historyczna' },
-    { value: 'other' as Genre, label: 'Inne' }
+    { value: 'mystery' as Genre, label: 'Mystery' },
+    { value: 'biography' as Genre, label: 'Biography' },
+    { value: 'history' as Genre, label: 'History' },
+    { value: 'other' as Genre, label: 'Other' }
   ];
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -57,7 +57,7 @@ const AddBookForm: React.FC<AddBookFormProps> = ({ onAddBook }) => {
     e.preventDefault();
     
     if (!formData.title || !formData.author || !formData.genre) {
-      alert('Proszę wypełnić wszystkie wymagane pola');
+      alert('Please fill all required fields');
       return;
     }
 
@@ -88,10 +88,10 @@ const AddBookForm: React.FC<AddBookFormProps> = ({ onAddBook }) => {
 
   return (
     <div className="add-book-form">
-      <h2>Dodaj nową książkę</h2>
+      <h2>Add new book</h2>
       <form onSubmit={handleSubmit} className="book-form">
         <div className="form-group">
-          <label htmlFor="title">Tytuł książki:</label>
+          <label htmlFor="title">Title:</label>
           <input
             type="text"
             id="title"
@@ -103,7 +103,7 @@ const AddBookForm: React.FC<AddBookFormProps> = ({ onAddBook }) => {
         </div>
 
         <div className="form-group">
-          <label htmlFor="author">Autor:</label>
+          <label htmlFor="author">Author:</label>
           <input
             type="text"
             id="author"
@@ -115,7 +115,7 @@ const AddBookForm: React.FC<AddBookFormProps> = ({ onAddBook }) => {
         </div>
 
         <div className="form-group">
-          <label htmlFor="year">Rok wydania:</label>
+          <label htmlFor="year">Year:</label>
           <input
             type="number"
             id="year"
@@ -129,7 +129,7 @@ const AddBookForm: React.FC<AddBookFormProps> = ({ onAddBook }) => {
         </div>
 
         <div className="form-group">
-          <label htmlFor="genre">Gatunek:</label>
+          <label htmlFor="genre">Genre:</label>
           <select
             id="genre"
             name="genre"
@@ -137,7 +137,7 @@ const AddBookForm: React.FC<AddBookFormProps> = ({ onAddBook }) => {
             onChange={handleInputChange}
             required
           >
-            <option value="">Wybierz gatunek</option>
+            <option value="">Select genre</option>
             {genreOptions.map(option => (
               <option key={option.value} value={option.value}>
                 {option.label}
@@ -147,7 +147,7 @@ const AddBookForm: React.FC<AddBookFormProps> = ({ onAddBook }) => {
         </div>
 
         <div className="form-group">
-          <label>Ocena:</label>
+          <label>Rating:</label>
           <div className="rating-table">
             {[1, 2, 3, 4, 5].map(rating => (
               <label key={rating} className="rating-option">
@@ -165,19 +165,19 @@ const AddBookForm: React.FC<AddBookFormProps> = ({ onAddBook }) => {
         </div>
 
         <div className="form-group">
-          <label htmlFor="description">Opis:</label>
+          <label htmlFor="description">Description:</label>
           <textarea
             id="description"
             name="description"
             value={formData.description}
             onChange={handleInputChange}
             rows={4}
-            placeholder="Krótki opis książki..."
+            placeholder="Short book description..."
           />
         </div>
 
         <div className="form-group">
-          <label htmlFor="image">Zdjęcie książki:</label>
+          <label htmlFor="image">Book image:</label>
           <input
             type="file"
             id="image"
@@ -187,14 +187,14 @@ const AddBookForm: React.FC<AddBookFormProps> = ({ onAddBook }) => {
           />
           {imagePreview && (
             <div className="image-preview">
-              <img src={imagePreview} alt="Podgląd" />
+              <img src={imagePreview} alt="Preview" />
             </div>
           )}
         </div>
 
         <div className="form-buttons">
           <button type="submit" className="submit-btn">
-            Dodaj książkę
+            Add book
           </button>
         </div>
       </form>
