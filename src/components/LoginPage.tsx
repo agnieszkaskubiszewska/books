@@ -21,6 +21,12 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack }) => {
   const [resetMessage, setResetMessage] = useState('');
   const navigate = useNavigate();
 
+  // Ensure default view is Login (no confirm password)
+  React.useEffect(() => {
+    setIsSignUp(false);
+    setConfirmPassword('');
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -126,9 +132,6 @@ setSuccess('Check your email for verification');
             <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required/>
             <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete={isSignUp ? 'new-password' : 'current-password'} required/>
           </div>
-          <div className="log-group">
-            <input type="password" placeholder="Confirm Password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} autoComplete="new-password" required/>
-          </div> 
           {isSignUp && (
             <div className="log-group">
               <input type="password" placeholder="Confirm Password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} autoComplete="new-password" required/>
