@@ -72,7 +72,7 @@ const AppContent: React.FC = () => {
 
         if (error) {
           console.error('Error fetching books:', error);
-          showNotification(`Błąd pobierania książek: ${error.message}`, 'error');
+      showNotification(`Error fetching books: ${error.message}`, 'error');
           return;
         }
 
@@ -90,7 +90,7 @@ const AppContent: React.FC = () => {
         setBooks(mapped);
       } catch (err: any) {
         console.error('Unexpected error fetching books:', err);
-        showNotification('Wystąpił nieoczekiwany błąd podczas pobierania książek', 'error');
+        showNotification('Unexpected error fetching books', 'error');
       }
     };
 
@@ -119,7 +119,7 @@ const AppContent: React.FC = () => {
         .single();
 
       if (error) {
-        showNotification(`Błąd dodawania książki: ${error.message}`, 'error');
+        showNotification(`Error adding book: ${error.message}`, 'error');
         return;
       }
 
@@ -133,29 +133,29 @@ const AppContent: React.FC = () => {
       };
 
       setBooks(prev => [...prev, inserted]);
-      showNotification(`Książka "${inserted.title}" została dodana!`);
+      showNotification(`Book "${inserted.title}" was added!`);
     } catch (err: any) {
       console.error('Add book error:', err);
-      showNotification('Wystąpił błąd podczas dodawania książki', 'error');
+      showNotification('Error adding book', 'error');
     }
   };
 
   const deleteBook = async (id: string) => {
     const bookToDelete = books.find(book => book.id === id);
     if (!bookToDelete) return;
-    if (!window.confirm(`Czy na pewno chcesz usunąć książkę "${bookToDelete.title}"?`)) return;
+if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.title}"?`)) return;
 
     try {
       const { error } = await supabase.from('books').delete().eq('id', id);
       if (error) {
-        showNotification(`Błąd usuwania: ${error.message}`, 'error');
+        showNotification(`Error deleting: ${error.message}`, 'error');
         return;
       }
       setBooks(prev => prev.filter(book => book.id !== id));
-      showNotification('Książka została usunięta!');
+      showNotification('Book was deleted!');
     } catch (err: any) {
       console.error('Delete book error:', err);
-      showNotification('Wystąpił błąd podczas usuwania książki', 'error');
+      showNotification('Error deleting book', 'error');
     }
   };
 
@@ -167,17 +167,17 @@ const AppContent: React.FC = () => {
       });
 
       if (error) {
-        showNotification(`Błąd logowania: ${error.message}`, 'error');
+        showNotification(`Error logging in: ${error.message}`, 'error');
         return;
       }
 
       if (data.user) {
-        showNotification(`Witaj! Zostałeś zalogowany.`, 'success');
+        showNotification(`Welcome! You are logged in.`, 'success');
         navigate('/');
       }
     } catch (error) {
       console.error('Login error:', error);
-      showNotification('Wystąpił błąd podczas logowania', 'error');
+      showNotification('Error logging in', 'error');
     }
   };
 
@@ -186,14 +186,14 @@ const AppContent: React.FC = () => {
       const { error } = await supabase.auth.signOut();
       
       if (error) {
-        showNotification(`Błąd wylogowania: ${error.message}`, 'error');
+        showNotification(`Error logging out: ${error.message}`, 'error');
         return;
       }
 
-      showNotification('Zostałeś wylogowany.', 'success');
+      showNotification('You are logged out.', 'success');
     } catch (error) {
       console.error('Logout error:', error);
-      showNotification('Wystąpił błąd podczas wylogowania', 'error');
+      showNotification('Error logging out', 'error');
     }
   };
 
@@ -203,7 +203,7 @@ const AppContent: React.FC = () => {
       <div className="app">
         <div className="loading-container">
           <div className="loading-spinner"></div>
-          <p>Ładowanie...</p>
+            <p>Loading...</p>
         </div>
       </div>
     );

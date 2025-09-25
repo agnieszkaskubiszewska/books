@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Book, Genre } from '../types';
+import { GenreSelect } from './GenreSelect';
+
 
 interface AddBookFormProps {
   onAddBook: (book: Omit<Book, 'id'>) => void;
@@ -10,7 +12,7 @@ const AddBookForm: React.FC<AddBookFormProps> = ({ onAddBook }) => {
     title: '',
     author: '',
     year: new Date().getFullYear(),
-    genre: '' as Genre,
+genre: '' as Genre,
     rating: undefined as number | undefined,
     description: '',
     image: null as File | null
@@ -23,10 +25,10 @@ const AddBookForm: React.FC<AddBookFormProps> = ({ onAddBook }) => {
     { value: 'thriller' as Genre, label: 'Thriller' },
     { value: 'romance' as Genre, label: 'Romans' },
     { value: 'sci-fi' as Genre, label: 'Science Fiction' },
-    { value: 'mystery' as Genre, label: 'Kryminał' },
-    { value: 'biography' as Genre, label: 'Biografia' },
-    { value: 'history' as Genre, label: 'Historyczna' },
-    { value: 'other' as Genre, label: 'Inne' }
+    { value: 'mystery' as Genre, label: 'Mystery' },
+    { value: 'biography' as Genre, label: 'Biography' },
+    { value: 'history' as Genre, label: 'History' },
+    { value: 'other' as Genre, label: 'Other' }
   ];
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -57,7 +59,7 @@ const AddBookForm: React.FC<AddBookFormProps> = ({ onAddBook }) => {
     e.preventDefault();
     
     if (!formData.title || !formData.author || !formData.genre) {
-      alert('Proszę wypełnić wszystkie wymagane pola');
+      alert('Please fill all required fields');
       return;
     }
 
@@ -88,10 +90,10 @@ const AddBookForm: React.FC<AddBookFormProps> = ({ onAddBook }) => {
 
   return (
     <div className="add-book-form">
-      <h2>Dodaj nową książkę</h2>
+      <h2 style={{ fontFamily: 'Spectral, serif' }}>Add new book</h2>
       <form onSubmit={handleSubmit} className="book-form">
         <div className="form-group">
-          <label htmlFor="title">Tytuł książki:</label>
+          <label htmlFor="title" style={{ fontFamily: 'Spectral, serif' }}>Title:</label>
           <input
             type="text"
             id="title"
@@ -103,7 +105,7 @@ const AddBookForm: React.FC<AddBookFormProps> = ({ onAddBook }) => {
         </div>
 
         <div className="form-group">
-          <label htmlFor="author">Autor:</label>
+          <label htmlFor="author" style={{ fontFamily: 'Spectral, serif' }}>Author:</label>
           <input
             type="text"
             id="author"
@@ -115,7 +117,7 @@ const AddBookForm: React.FC<AddBookFormProps> = ({ onAddBook }) => {
         </div>
 
         <div className="form-group">
-          <label htmlFor="year">Rok wydania:</label>
+          <label htmlFor="year" style={{ fontFamily: 'Spectral, serif' }}>Year:</label>
           <input
             type="number"
             id="year"
@@ -129,55 +131,58 @@ const AddBookForm: React.FC<AddBookFormProps> = ({ onAddBook }) => {
         </div>
 
         <div className="form-group">
-          <label htmlFor="genre">Gatunek:</label>
-          <select
-            id="genre"
-            name="genre"
+          <label className="dropdown-label" htmlFor="genre" style={{ fontFamily: 'Spectral, serif' }}>Genre:</label>
+          <GenreSelect
             value={formData.genre}
-            onChange={handleInputChange}
-            required
-          >
-            <option value="">Wybierz gatunek</option>
-            {genreOptions.map(option => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+            onChange={(g) => setFormData(p => ({ ...p, genre: g }))}
+            options={genreOptions}
+          />
         </div>
 
         <div className="form-group">
-          <label>Ocena:</label>
+          <label style={{ fontFamily: 'Spectral, serif' }}>Rating:</label>
           <div className="rating-table">
-            {[1, 2, 3, 4, 5].map(rating => (
-              <label key={rating} className="rating-option">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <label
+                key={i}
+                className="rating-option"
+                title={`${i} / 5`}
+                onClick={() => setFormData(prev => ({ ...prev, rating: i }))}
+              >
                 <input
                   type="radio"
                   name="rating"
-                  value={rating}
-                  checked={formData.rating === rating}
+                  value={i}
+                  checked={formData.rating === i}
                   onChange={handleInputChange}
                 />
-                <span>{rating}</span>
+                <span
+                  className={`book-emoji ${i <= (formData.rating ?? 0) ? 'active' : ''}`}
+                  aria-hidden="true"
+                  style={{ border: 'none' }}
+                >
+                ⭐
+                </span>
               </label>
             ))}
           </div>
         </div>
 
         <div className="form-group">
-          <label htmlFor="description">Opis:</label>
-          <textarea
+      <label htmlFor="description" style={{ fontFamily: 'Spectral, serif' }}>Description:</label>
+          <textarea 
+            style={{ fontFamily: 'Spectral, serif' }}
             id="description"
             name="description"
             value={formData.description}
             onChange={handleInputChange}
             rows={4}
-            placeholder="Krótki opis książki..."
+placeholder="Why you love or hate this book. Spill the tea."
           />
         </div>
 
         <div className="form-group">
-          <label htmlFor="image">Zdjęcie książki:</label>
+          <label htmlFor="image">Book image:</label>
           <input
             type="file"
             id="image"
@@ -187,14 +192,14 @@ const AddBookForm: React.FC<AddBookFormProps> = ({ onAddBook }) => {
           />
           {imagePreview && (
             <div className="image-preview">
-              <img src={imagePreview} alt="Podgląd" />
+              <img src={imagePreview} alt="Preview" />
             </div>
           )}
         </div>
 
         <div className="form-buttons">
           <button type="submit" className="submit-btn">
-            Dodaj książkę
+            Add book
           </button>
         </div>
       </form>
