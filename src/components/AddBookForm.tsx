@@ -15,7 +15,8 @@ const AddBookForm: React.FC<AddBookFormProps> = ({ onAddBook }) => {
 genre: '' as Genre,
     rating: undefined as number | undefined,
     description: '',
-    image: null as File | null
+    image: null as File | null,
+    available: false
   });
 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -83,7 +84,8 @@ genre: '' as Genre,
       genre: '' as Genre,
       rating: undefined,
       description: '',
-      image: null
+      image: null,
+      available: false
     });
     setImagePreview(null);
   };
@@ -180,9 +182,19 @@ genre: '' as Genre,
 placeholder="Why you love or hate this book. Spill the tea."
           />
         </div>
+<div className="form-group">
+<label htmlFor="available" style={{ fontFamily: 'Spectral, serif' }}>Available for loan:</label>
+          <input
+            type="checkbox"
+            id="available"
+            name="available"
+            checked={formData.available}
+            onChange={handleInputChange}
+          />
+        </div>
 
         <div className="form-group">
-          <label htmlFor="image">Book image:</label>
+          <label htmlFor="image" style={{ fontFamily: 'Spectral, serif' }}  >Book image:</label>
           <input
             type="file"
             id="image"
