@@ -33,14 +33,17 @@ genre: '' as Genre,
   ];
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
+    const target = e.target as HTMLInputElement;
+    const { name, value, type, checked } = target;
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'year'
-        ? (parseInt(value) || new Date().getFullYear())
-        : name === 'rating'
-          ? (value ? parseInt(value) : undefined)
-          : value
+      [name]: type === 'checkbox'
+        ? checked
+        : name === 'year'
+          ? (parseInt(value) || new Date().getFullYear())
+          : name === 'rating'
+            ? (value ? parseInt(value) : undefined)
+            : value
     }));
   };
 
@@ -182,16 +185,19 @@ genre: '' as Genre,
 placeholder="Why you love or hate this book. Spill the tea."
           />
         </div>
-<div className="form-group">
-<label htmlFor="available" style={{ fontFamily: 'Spectral, serif' }}>Available for loan:</label>
-          <input
-            type="checkbox"
-            id="available"
-            name="available"
-            checked={formData.available}
-            onChange={handleInputChange}
-          />
-        </div>
+        <div className="form-group">
+  <label htmlFor="available" style={{ fontFamily: 'Spectral, serif' }}>Available for loan:</label>
+  <label className="switch" htmlFor="available">
+    <input
+      id="available"
+      name="available"
+      type="checkbox"
+      checked={formData.available}
+      onChange={handleInputChange}
+    />
+    <span className="switch-track"><span className="switch-thumb" /></span>
+  </label>
+</div>
 
         <div className="form-group">
           <label htmlFor="image" style={{ fontFamily: 'Spectral, serif' }}  >Book image:</label>
