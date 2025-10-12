@@ -17,6 +17,9 @@ create table if not exists public.books (
   genre text,
   rating int check (rating between 1 and 5),
   image text,
+  rent boolean default false,
+  rent_mode text check (rent_mode in ('local','shipping')),
+  rent_region text,
   created_at timestamptz not null default now()
 );
 

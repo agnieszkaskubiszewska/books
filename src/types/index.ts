@@ -7,6 +7,9 @@ export interface Book {
   rating?: number;
   description?: string;
   image?: string;
+  rent?: boolean;
+  rentMode?: 'local' | 'shipping';
+  rentRegion?: string;
 }
 
 export type Genre = 
