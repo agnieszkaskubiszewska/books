@@ -12,8 +12,6 @@ import { Book, Section, Genre } from './types';
 import { supabase } from './supabase';
 
 const AppContent: React.FC = () => {
-  // Zmodyfikuj tę listę: wpisz swój e-mail jako admin
-const ADMIN_EMAILS = ['agnieszka.skubiszewska@gmail.com'];
   const navigate = useNavigate();
   const [books, setBooks] = useState<Book[]>([]);
 
@@ -22,9 +20,8 @@ const ADMIN_EMAILS = ['agnieszka.skubiszewska@gmail.com'];
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<{ name: string; email: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const isAdmin = !!user?.email && ADMIN_EMAILS.includes((user.email || '').toLowerCase());
+  const [isAdmin, setIsAdmin] = useState(false);
 
-  // Sprawdź stan autentykacji przy starcie aplikacji
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -35,6 +32,7 @@ const ADMIN_EMAILS = ['agnieszka.skubiszewska@gmail.com'];
             email: session.user.email || ''
           });
           setIsLoggedIn(true);
+          setIsAdmin((session.user.app_metadata as any)?.role === 'admin');
         }
       } catch (error) {
         console.error('Error checking auth:', error);
@@ -45,18 +43,19 @@ const ADMIN_EMAILS = ['agnieszka.skubiszewska@gmail.com'];
 
     checkAuth();
 
-    // Nasłuchuj zmian stanu autentykacji
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (_event, session) => {
         if (session?.user) {
           setUser({
             name: session.user.email?.split('@')[0] || 'User',
             email: session.user.email || ''
           });
           setIsLoggedIn(true);
+          setIsAdmin((session.user.app_metadata as any)?.role === 'admin');
         } else {
           setUser(null);
           setIsLoggedIn(false);
+          setIsAdmin(false);
         }
         setIsLoading(false);
       }
@@ -65,7 +64,6 @@ const ADMIN_EMAILS = ['agnieszka.skubiszewska@gmail.com'];
     return () => subscription.unsubscribe();
   }, []);
 
-  // Pobierz książki z bazy danych Supabase
   useEffect(() => {
     const fetchBooks = async () => {
       try {
@@ -215,14 +213,29 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
 
   const handleLogout = async () => {
     try {
+      // Jeśli sesji nie ma, potraktuj jako wylogowany
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setUser(null);
+        setIsLoggedIn(false);
+        setIsAdmin(false);
+        showNotification('You are logged out.', 'success');
+        navigate('/');
+        return;
+      }
+
       const { error } = await supabase.auth.signOut();
-      
-      if (error) {
+
+      if (error && error.message !== 'Auth session missing!') {
         showNotification(`Error logging out: ${error.message}`, 'error');
         return;
       }
 
+      setUser(null);
+      setIsLoggedIn(false);
+      setIsAdmin(false);
       showNotification('You are logged out.', 'success');
+      navigate('/');
     } catch (error) {
       console.error('Logout error:', error);
       showNotification('Error logging out', 'error');
