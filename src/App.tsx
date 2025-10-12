@@ -12,6 +12,8 @@ import { Book, Section, Genre } from './types';
 import { supabase } from './supabase';
 
 const AppContent: React.FC = () => {
+  // Zmodyfikuj tę listę: wpisz swój e-mail jako admin
+const ADMIN_EMAILS = ['agnieszka.skubiszewska@gmail.com'];
   const navigate = useNavigate();
   const [books, setBooks] = useState<Book[]>([]);
 
@@ -20,6 +22,7 @@ const AppContent: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<{ name: string; email: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const isAdmin = !!user?.email && ADMIN_EMAILS.includes((user.email || '').toLowerCase());
 
   // Sprawdź stan autentykacji przy starcie aplikacji
   useEffect(() => {
@@ -68,7 +71,7 @@ const AppContent: React.FC = () => {
       try {
         const { data, error } = await supabase
           .from('books')
-          .select('id,title,author,description,year,genre,rating,image,created_at');
+          .select('id,title,author,description,year,genre,rating,image,created_at,rent,rent_mode,rent_region');
 
         if (error) {
           console.error('Error fetching books:', error);
@@ -85,6 +88,9 @@ const AppContent: React.FC = () => {
           genre: (row.genre as Genre) ?? ('other' as Genre),
           rating: row.rating ?? undefined,
           image: row.image ?? undefined,
+          rent: !!row.rent,
+          rentMode: row.rent_mode ?? undefined,
+          rentRegion: row.rent_region ?? undefined,
         }));
 
         setBooks(mapped);
@@ -114,6 +120,9 @@ const AppContent: React.FC = () => {
           genre: book.genre,
           rating: book.rating ?? null,
           image: book.image ?? null,
+          rent: book.rent ?? false,
+          rent_mode: book.rentMode ?? null,
+          rent_region: book.rentRegion ?? null,
         }])
         .select()
         .single();
@@ -129,7 +138,12 @@ const AppContent: React.FC = () => {
         author: data.author,
         description: data.description ?? '',
         year: data.created_at ? new Date(data.created_at).getFullYear() : new Date().getFullYear(),
-        genre: 'other',
+        genre: (data.genre as Genre) ?? ('other' as Genre),
+        rating: data.rating ?? undefined,
+        image: data.image ?? undefined,
+        rent: !!data.rent,
+        rentMode: data.rent_mode ?? undefined,
+        rentRegion: data.rent_region ?? undefined,
       };
 
       setBooks(prev => [...prev, inserted]);
@@ -156,6 +170,24 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
     } catch (err: any) {
       console.error('Delete book error:', err);
       showNotification('Error deleting book', 'error');
+    }
+  };
+
+  const rentBook = async (id: string) => {
+    const bookToRent = books.find(book => book.id === id);
+    if (!bookToRent) return;
+    if (!window.confirm(`Are you sure you want to rent the book "${bookToRent.title}"?`)) return;
+
+    try {
+      const { error } = await supabase.from('books').update({ rent: true }).eq('id', id);
+      if (error) {
+        showNotification(`Error renting: ${error.message}`, 'error');
+        return;
+      }
+      showNotification('Book was rented!');
+    } catch (err: any) {
+      console.error('Rent book error:', err);
+      showNotification('Error renting book', 'error');
     }
   };
 
@@ -223,7 +255,7 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
           <Route path="/" element={<Welcome isLoggedIn={isLoggedIn} />} />
           <Route path="/login" element={<LoginPage onLogin={handleLogin} onBack={() => navigate('/')} />} />
           <Route path="/add-book" element={isLoggedIn ? <AddBookForm onAddBook={addBook} /> : <Navigate to="/login" />} />
-          <Route path="/books" element={<BookList books={books} onDeleteBook={deleteBook} isLoggedIn={isLoggedIn} />} />
+          <Route path="/books" element={<BookList books={books} onDeleteBook={deleteBook} isLoggedIn={isLoggedIn} onRentBook={rentBook} isAdmin={isAdmin} />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="*" element={<Navigate to="/" />} />

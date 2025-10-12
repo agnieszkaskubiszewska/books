@@ -446,7 +446,7 @@ p {
 }
 
 .delete-book-btn {
-  background: linear-gradient(135deg, #962628 0%, #7A1E20 100%);
+  background: linear-gradient(135deg, #2DBA68 0%, #228B22 100%);
   color: white;
   border: none;
   padding: 8px 16px;
@@ -455,13 +455,34 @@ p {
   font-size: 0.85rem;
   font-weight: 600;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(150, 38, 40, 0.3);
+  box-shadow: 0 2px 8px rgba(45, 186, 104, 0.3);
   margin-top: 10px;
 }
 
 .delete-book-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(150, 38, 40, 0.4);
+  box-shadow: 0 4px 12px rgba(45, 186, 104, 0.4);
+}
+
+/* Rent button - lighter green variant */
+.rent-a {
+  background: rgba(45, 186, 104, 0.12);
+  color: #228B22;
+  border: 1px solid #b7ebcf;
+  padding: 8px 16px;
+  border-radius: 15px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(45, 186, 104, 0.15);
+  margin-right: 8px;
+}
+
+.rent-a:hover {
+  background: rgba(45, 186, 104, 0.18);
+  box-shadow: 0 4px 12px rgba(45, 186, 104, 0.25);
+  transform: translateY(-1px);
 }
 
 .rating-table {

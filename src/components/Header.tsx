@@ -127,7 +127,10 @@ const Header: React.FC<HeaderProps> = ({ currentSection, onSectionChange, user, 
                   <span className="user-name">{user.name}</span>
                   <span className="user-email">{user.email}</span>
                 </div>
-                <button className="user-menu-item" onClick={() => {
+            <button className="user-menu-item">
+                  Notifications
+                </button>
+            <button className="user-menu-item" onClick={() => {
                   onLogout();
                   setIsUserMenuOpen(false);
                 }}>

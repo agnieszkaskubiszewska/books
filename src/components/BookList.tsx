@@ -5,9 +5,11 @@ interface BookListProps {
   books: Book[];
   onDeleteBook: (id: string) => void;
   isLoggedIn: boolean;
+  onRentBook: (id: string) => void;
+  isAdmin?: boolean;
 }
 
-const BookList: React.FC<BookListProps> = ({ books, onDeleteBook, isLoggedIn }) => {
+const BookList: React.FC<BookListProps> = ({ books, onDeleteBook, isLoggedIn, onRentBook, isAdmin }) => {
   const getGenreName = (genre: Genre): string => {
     const genres: Record<Genre, string> = {
       'fantasy': 'Fantasy',
@@ -58,12 +60,18 @@ const BookList: React.FC<BookListProps> = ({ books, onDeleteBook, isLoggedIn }) 
               <p><strong>Opis:</strong> {book.description}</p>
             )}
             {isLoggedIn && (
-              <button 
-                className="delete-book-btn"
-                onClick={() => onDeleteBook(book.id)}
-              >
-                Usuń
-              </button>
+              <>
+                {book.rent && (
+                  <button className="rent-a book" onClick={() => onRentBook(book.id)}>
+                    Wypożycz
+                  </button>
+                )}
+                {isAdmin && (
+                  <button className="delete-book-btn" onClick={() => onDeleteBook(book.id)}>
+                    Usuń
+                  </button>
+                )}
+              </>
             )}
           </div>
         ))}

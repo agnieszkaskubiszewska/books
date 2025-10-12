@@ -16,7 +16,9 @@ genre: '' as Genre,
     rating: undefined as number | undefined,
     description: '',
     image: null as File | null,
-    available: false
+    available: false as boolean,
+    rentMode: 'local' as 'local' | 'shipping',
+    rentRegion: '' as string,
   });
 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -30,6 +32,25 @@ genre: '' as Genre,
     { value: 'biography' as Genre, label: 'Biography' },
     { value: 'history' as Genre, label: 'History' },
     { value: 'other' as Genre, label: 'Other' }
+  ];
+
+  const regionOptions: { value: string; label: string }[] = [
+    { value: 'dolnośląskie', label: 'Dolnośląskie' },
+    { value: 'kujawsko-pomorskie', label: 'Kujawsko‑pomorskie' },
+    { value: 'lubelskie', label: 'Lubelskie' },
+    { value: 'lubuskie', label: 'Lubuskie' },
+    { value: 'łódzkie', label: 'Łódzkie' },
+    { value: 'małopolskie', label: 'Małopolskie' },
+    { value: 'mazowieckie', label: 'Mazowieckie' },
+    { value: 'opolskie', label: 'Opolskie' },
+    { value: 'podkarpackie', label: 'Podkarpackie' },
+    { value: 'podlaskie', label: 'Podlaskie' },
+    { value: 'pomorskie', label: 'Pomorskie' },
+    { value: 'śląskie', label: 'Śląskie' },
+    { value: 'świętokrzyskie', label: 'Świętokrzyskie' },
+    { value: 'warmińsko-mazurskie', label: 'Warmińsko‑mazurskie' },
+    { value: 'wielkopolskie', label: 'Wielkopolskie' },
+    { value: 'zachodniopomorskie', label: 'Zachodniopomorskie' },
   ];
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -74,7 +95,10 @@ genre: '' as Genre,
       genre: formData.genre,
       rating: formData.rating,
       description: formData.description,
-      image: imagePreview || undefined
+      image: imagePreview || undefined,
+      rent: formData.available,
+      rentMode: formData.available ? formData.rentMode : undefined,
+      rentRegion: formData.available && formData.rentMode === 'shipping' ? formData.rentRegion : undefined,
     };
 
     onAddBook(bookData);
@@ -88,7 +112,9 @@ genre: '' as Genre,
       rating: undefined,
       description: '',
       image: null,
-      available: false
+      available: false as boolean,
+      rentMode: 'local' as 'local' | 'shipping',
+      rentRegion: '' as string,
     });
     setImagePreview(null);
   };
@@ -198,6 +224,49 @@ placeholder="Why you love or hate this book. Spill the tea."
     <span className="switch-track"><span className="switch-thumb" /></span>
   </label>
 </div>
+{formData.available && (
+  <div className="form-group">
+    <div className="loan-mode">
+      <div className="switch-row">
+        <span style={{ fontFamily: 'Spectral, serif' }}>Only local loan</span>
+        <label className="switch" htmlFor="rentLocal">
+          <input
+            id="rentLocal"
+            name="rentLocal"
+            type="checkbox"
+            checked={formData.rentMode === 'local'}
+            onChange={() => setFormData(prev => ({ ...prev, rentMode: 'local' }))}
+          />
+          <span className="switch-track"><span className="switch-thumb" /></span>
+        </label>
+      </div>
+      <div className="switch-row" style={{ marginTop: 8 }}>
+        <span style={{ fontFamily: 'Spectral, serif' }}>Shipping</span>
+        <label className="switch" htmlFor="rentShipping">
+          <input
+            id="rentShipping"
+            name="rentShipping"
+            type="checkbox"
+            checked={formData.rentMode === 'shipping'}
+            onChange={() => setFormData(prev => ({ ...prev, rentMode: 'shipping' }))}
+          />
+          <span className="switch-track"><span className="switch-thumb" /></span>
+        </label>
+      </div>
+    </div>
+
+    {formData.rentMode === 'shipping' && (
+      <div style={{ marginTop: 12 }}>
+        <label style={{ fontFamily: 'Spectral, serif' }}>Region (Poland):</label>
+        <GenreSelect
+          value={formData.rentRegion}
+          onChange={(r) => setFormData(p => ({ ...p, rentRegion: r }))}
+          options={regionOptions}
+        />
+      </div>
+    )}
+  </div>
+)}
 
         <div className="form-group">
           <label htmlFor="image" style={{ fontFamily: 'Spectral, serif' }}  >Book image:</label>
