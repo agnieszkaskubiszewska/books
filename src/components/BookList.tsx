@@ -93,6 +93,7 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
       <h2>Books</h2>
       <div className="filters-toolbar">
         <div className="filters-actions">
+        {isLoggedIn && (
           <button
             type="button"
             className={`icon-btn ${isFilterOpen ? 'active' : ''}`}
@@ -104,7 +105,7 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
               <path d="M4 5h16l-6.5 7v5l-3 2v-7L4 5z" fill="currentColor"/>
             </svg>
           </button>
-
+          )}
           <button
             type="button"
             className={`icon-btn ${isSortOpen ? 'active' : ''}`}
