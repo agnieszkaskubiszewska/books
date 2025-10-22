@@ -1,6 +1,14 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { Book, Genre } from '../types';
 import { useSearchParams } from 'react-router-dom';
+import BookView from './bookView';
+function scrollElementToViewportCenter(el: HTMLElement, options: ScrollToOptions = { behavior: 'smooth' }) {
+  const rect = el.getBoundingClientRect();
+  const vh = window.innerHeight || document.documentElement.clientHeight;
+  const elementCenterInDoc = window.scrollY + rect.top + rect.height / 2;
+  const targetScrollTop = Math.max(elementCenterInDoc - vh / 2, 0);
+  window.scrollTo({ top: targetScrollTop, ...options });
+}
 
 interface BookListProps {
   books: Book[];
@@ -45,6 +53,8 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
   const [ratingSort, setRatingSort] = useState<'none' | 'best' | 'worst'>(initialSort);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isSortOpen, setIsSortOpen] = useState(false);
+  const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+  const modalAnchorRef = useRef<HTMLDivElement | null>(null);
 
   const filteredBooks = useMemo(() => {
     return books.filter(book => {
@@ -77,6 +87,10 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
     }
     return list;
   }, [filteredBooks, ratingSort]);
+
+  useEffect(() => {
+    // no-op: przewijamy przed otwarciem modalu w handlerze kliknięcia
+  }, [selectedBook]);
     
 
   if (books.length === 0) {
@@ -91,6 +105,7 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
   return (
     <div className="book-list">
       <h2>Books</h2>
+      <div ref={modalAnchorRef} />
       <div className="filters-toolbar">
         <div className="filters-actions">
         {isLoggedIn && (
@@ -200,7 +215,13 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
           <p>No books found for the selected filters.</p>
         ) : (
           visibleBooks.map(book => (
-            <div key={book.id} className="book-item">
+            <div key={book.id} className="book-item" onClick={() => {
+              setSelectedBook(null);
+              if (modalAnchorRef.current) {
+                scrollElementToViewportCenter(modalAnchorRef.current);
+              }
+              setTimeout(() => setSelectedBook(book), 120);
+            }}>
               {book.image && (
                 <div className="book-image-container">
                   <img src={book.image} alt={book.title} className="book-image" />
@@ -219,12 +240,12 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
               {isLoggedIn && (
                 <>
                   {book.rent && (
-                    <button className="rent-a book" onClick={() => onRentBook(book.id)}>
+                    <button className="rent-a book" onClick={(e) => { e.stopPropagation(); onRentBook(book.id); }}>
                       Rent book
                     </button>
                   )}
                   {isAdmin && (
-                    <button className="delete-book-btn" onClick={() => onDeleteBook(book.id)}>
+                    <button className="delete-book-btn" onClick={(e) => { e.stopPropagation(); onDeleteBook(book.id); }}>
                     Delete book
                     </button>
                   )}
@@ -234,7 +255,16 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
           ))
         )}
       </div>
-    </div>
+      {selectedBook && ( <BookView
+        book={selectedBook}
+        isOpen={!!selectedBook}
+        onClose={() => setSelectedBook(null)}
+        onRent={onRentBook}
+        onDelete={onDeleteBook}
+        isLoggedIn={isLoggedIn}
+        isAdmin={isAdmin}
+      />)}
+      </div>
   );
 };
 
