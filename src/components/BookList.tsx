@@ -194,7 +194,7 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
           </div>
         )}
       </div>
-      <div className="books-grid">
+      <div className="books-mosaic">
         {visibleBooks.length === 0 ? (
           <p>No books found for the selected filters.</p>
         ) : (
