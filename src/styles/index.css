@@ -1201,3 +1201,26 @@ body { font-family: "MyFont", system-ui, -apple-system, Segoe UI, Roboto, sans-s
 }
 .switch input:checked + .switch-track { background: rgba(45,186,104,.25); border-color: #b7ebcf; }
 .switch input:checked + .switch-track .switch-thumb { left: 23px; background: #2DBA68; }
+
+/* Mosaic (CSS Columns) */
+.books-mosaic {
+  column-gap: 20px;
+  column-count: 1;
+}
+
+@media (min-width: 640px) {
+  .books-mosaic { column-count: 2; }
+}
+@media (min-width: 1000px) {
+  .books-mosaic { column-count: 3; }
+}
+
+/* Zapobiega łamaniu kart między kolumnami */
+.books-mosaic .book-item {
+  break-inside: avoid;
+  -webkit-column-break-inside: avoid;
+  page-break-inside: avoid;
+  display: inline-block;
+  width: 100%;
+  margin: 0 0 20px;
+}

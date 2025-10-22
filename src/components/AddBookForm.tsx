@@ -239,6 +239,16 @@ placeholder="Why you love or hate this book. Spill the tea."
           />
           <span className="switch-track"><span className="switch-thumb" /></span>
         </label>
+        {formData.rentMode === 'local' && (
+      <div style={{ marginTop: 12 }}>
+        <label style={{ fontFamily: 'Spectral, serif' }}>Region (Poland):</label>
+        <GenreSelect
+          value={formData.rentRegion}
+          onChange={(r) => setFormData(p => ({ ...p, rentRegion: r }))}
+          options={regionOptions}
+        />
+      </div>
+    )}
       </div>
       <div className="switch-row" style={{ marginTop: 8 }}>
         <span style={{ fontFamily: 'Spectral, serif' }}>Shipping</span>
@@ -254,17 +264,6 @@ placeholder="Why you love or hate this book. Spill the tea."
         </label>
       </div>
     </div>
-
-    {formData.rentMode === 'shipping' && (
-      <div style={{ marginTop: 12 }}>
-        <label style={{ fontFamily: 'Spectral, serif' }}>Region (Poland):</label>
-        <GenreSelect
-          value={formData.rentRegion}
-          onChange={(r) => setFormData(p => ({ ...p, rentRegion: r }))}
-          options={regionOptions}
-        />
-      </div>
-    )}
   </div>
 )}
 
