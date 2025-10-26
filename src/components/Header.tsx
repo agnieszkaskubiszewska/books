@@ -8,11 +8,13 @@ interface HeaderProps {
   user: { name: string; email: string } | null;
   isLoggedIn: boolean;
   onLogout: () => void;
+  unreadCount?: number;
 }
 
-const Header: React.FC<HeaderProps> = ({ currentSection, onSectionChange, user, isLoggedIn, onLogout }) => {
+const Header: React.FC<HeaderProps> = ({ currentSection, onSectionChange, user, isLoggedIn, onLogout, unreadCount = 0 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isMessagesMenuOpen, setIsMessagesMenuOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -24,7 +26,13 @@ const Header: React.FC<HeaderProps> = ({ currentSection, onSectionChange, user, 
     setIsUserMenuOpen(!isUserMenuOpen);
   };
 
-  const handleSectionClick = (section: Section) => {
+  const handleMessagesMenuClick = () => {
+    navigate('/messages');
+    setIsMessagesMenuOpen(false);
+    setIsUserMenuOpen(false);
+  };
+
+const handleSectionClick = (section: Section) => {
     onSectionChange(section);
     setIsMenuOpen(false);
     
@@ -87,6 +95,7 @@ const Header: React.FC<HeaderProps> = ({ currentSection, onSectionChange, user, 
             >
               Books
             </button>
+            
             <button 
               className="dropdown-item"
               onClick={() => handleSectionClick('about')}
@@ -103,6 +112,18 @@ const Header: React.FC<HeaderProps> = ({ currentSection, onSectionChange, user, 
         </div>
         
         <div className="user-profile">
+          {isLoggedIn && (
+            <div className="user-bell">
+              <button className="user-bell-btn" onClick={handleMessagesMenuClick} aria-label="Messages">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M12 24a2.4 2.4 0 0 0 2.4-2.4h-4.8A2.4 2.4 0 0 0 12 24zm6-6v-5.4c0-3-1.6-5.5-4.5-6.1V5a1.5 1.5 0 0 0-3 0v1.5C7.6 7.1 6 9.6 6 12.6V18l-2.4 2.4V21h16.8v-.6L18 18z" />
+                </svg>
+              </button>
+              {unreadCount > 0 && (
+                <span className="user-bell-badge">{unreadCount}</span>
+              )}
+            </div>
+          )}
           <button 
             className={`user-avatar ${isUserMenuOpen ? 'active' : ''}`}
             onClick={handleUserMenuClick}
@@ -127,8 +148,8 @@ const Header: React.FC<HeaderProps> = ({ currentSection, onSectionChange, user, 
                   <span className="user-name">{user.name}</span>
                   <span className="user-email">{user.email}</span>
                 </div>
-            <button className="user-menu-item">
-                  Notifications
+        <button className="user-menu-item" onClick={handleMessagesMenuClick}>
+                  Messages
                 </button>
             <button className="user-menu-item" onClick={() => {
                   onLogout();
@@ -140,7 +161,7 @@ const Header: React.FC<HeaderProps> = ({ currentSection, onSectionChange, user, 
             ) : (
               <>
                 <button className="user-menu-item" onClick={() => {
-                  navigate('/login');
+              navigate('/login');
                   setIsUserMenuOpen(false);
                 }}>
                   Log in

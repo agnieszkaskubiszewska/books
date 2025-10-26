@@ -10,6 +10,7 @@ export interface Book {
   rent?: boolean;
   rentMode?: 'local' | 'shipping';
   rentRegion?: string;
+  ownerId?: string;
 }
 
 export type Genre = 

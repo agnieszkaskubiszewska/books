@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { Book, Genre } from '../types';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import BookView from './bookView';
 function scrollElementToViewportCenter(el: HTMLElement, options: ScrollToOptions = { behavior: 'smooth' }) {
   const rect = el.getBoundingClientRect();
@@ -53,6 +53,7 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
   const [ratingSort, setRatingSort] = useState<'none' | 'best' | 'worst'>(initialSort);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isSortOpen, setIsSortOpen] = useState(false);
+  const navigate = useNavigate();
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const modalAnchorRef = useRef<HTMLDivElement | null>(null);
 
@@ -240,8 +241,20 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
               {isLoggedIn && (
                 <>
                   {book.rent && (
-                    <button className="rent-a book" onClick={(e) => { e.stopPropagation(); onRentBook(book.id); }}>
-                      Rent book
+                    <button
+                      className="rent-a book"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (book.ownerId) {
+                          navigate(`/messages?to=${book.ownerId}`);
+                        } else {
+                          navigate('/messages');
+                          // opcjonalnie można dodać notyfikację, jeśli masz globalne
+                          // window.alert('Brak właściciela tej książki – nie można rozpocząć rozmowy.');
+                        }
+                      }}
+                    >
+                      Rent
                     </button>
                   )}
                   {isAdmin && (
