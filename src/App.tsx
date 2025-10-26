@@ -8,8 +8,10 @@ import Contact from './components/Contact';
 import Notification from './components/Notification';
 import Welcome from './components/Welcome';
 import LoginPage from './components/LoginPage';
+import Messages from './components/Messages';
 import { Book, Section, Genre } from './types';
 import { supabase } from './supabase';
+import { fetchMessagesForUser, sendMessage as sbSendMessage, markMessageRead as sbMarkMessageRead, type DbMessage } from './supabase';
 
 const AppContent: React.FC = () => {
   const navigate = useNavigate();
@@ -21,6 +23,10 @@ const AppContent: React.FC = () => {
   const [user, setUser] = useState<{ name: string; email: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [dbMessages, setDbMessages] = useState<DbMessage[]>([]);
+  const unreadCount = dbMessages.filter(m => !m.read && m.recipient_id === currentUserId && !m.parent_id).length;
+
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -33,6 +39,7 @@ const AppContent: React.FC = () => {
           });
           setIsLoggedIn(true);
           setIsAdmin((session.user.app_metadata as any)?.role === 'admin');
+          setCurrentUserId(session.user.id);
         }
       } catch (error) {
         console.error('Error checking auth:', error);
@@ -52,10 +59,12 @@ const AppContent: React.FC = () => {
           });
           setIsLoggedIn(true);
           setIsAdmin((session.user.app_metadata as any)?.role === 'admin');
+          setCurrentUserId(session.user.id);
         } else {
           setUser(null);
           setIsLoggedIn(false);
           setIsAdmin(false);
+          setCurrentUserId(null);
         }
         setIsLoading(false);
       }
@@ -69,11 +78,11 @@ const AppContent: React.FC = () => {
       try {
         const { data, error } = await supabase
           .from('books')
-          .select('id,title,author,description,year,genre,rating,image,created_at,rent,rent_mode,rent_region');
+          .select('id,title,author,description,year,genre,rating,image,created_at,rent,rent_mode,rent_region,owner_id');
 
         if (error) {
           console.error('Error fetching books:', error);
-      showNotification(`Error fetching books: ${error.message}`, 'error');
+  showNotification(`Error fetching books: ${error.message}`, 'error');
           return;
         }
 
@@ -89,6 +98,7 @@ const AppContent: React.FC = () => {
           rent: !!row.rent,
           rentMode: row.rent_mode ?? undefined,
           rentRegion: row.rent_region ?? undefined,
+          ownerId: row.owner_id ?? undefined,
         }));
 
         setBooks(mapped);
@@ -100,6 +110,19 @@ const AppContent: React.FC = () => {
 
     fetchBooks();
   }, []);
+
+  // Fetch messages for current user after login
+  useEffect(() => {
+    if (!isLoggedIn || !currentUserId) return;
+    (async () => {
+      try {
+        const data = await fetchMessagesForUser();
+        setDbMessages(data);
+      } catch (e) {
+        console.error('Error fetching messages:', e);
+      }
+    })();
+  }, [isLoggedIn, currentUserId]);
 
   const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     setNotification({ message, type });
@@ -121,6 +144,7 @@ const AppContent: React.FC = () => {
           rent: book.rent ?? false,
           rent_mode: book.rentMode ?? null,
           rent_region: book.rentRegion ?? null,
+          owner_id: (await supabase.auth.getUser()).data.user?.id ?? null,
         }])
         .select()
         .single();
@@ -142,6 +166,7 @@ const AppContent: React.FC = () => {
         rent: !!data.rent,
         rentMode: data.rent_mode ?? undefined,
         rentRegion: data.rent_region ?? undefined,
+        ownerId: data.owner_id ?? undefined,
       };
 
       setBooks(prev => [...prev, inserted]);
@@ -213,7 +238,6 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
 
   const handleLogout = async () => {
     try {
-      // Jeśli sesji nie ma, potraktuj jako wylogowany
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         setUser(null);
@@ -234,12 +258,52 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
       setUser(null);
       setIsLoggedIn(false);
       setIsAdmin(false);
+      setCurrentUserId(null);
       showNotification('You are logged out.', 'success');
       navigate('/');
     } catch (error) {
       console.error('Logout error:', error);
       showNotification('Error logging out', 'error');
     }
+  };
+
+  const markMessageRead = async (id: string) => {
+    try {
+      await sbMarkMessageRead(id);
+      setDbMessages(prev => prev.map(m => (m.id === id ? { ...m, read: true } : m)));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const sendReply = async (rootId: string, text: string) => {
+    if (!text.trim() || !currentUserId) return;
+    const root = dbMessages.find(m => m.id === rootId); if (!root) return;
+    const recipientId = root.sender_id === currentUserId ? root.recipient_id : root.sender_id;
+    const inserted = await sbSendMessage({
+      senderId: currentUserId,
+      senderName: user?.name,
+      recipientId,
+  recipientName: root.sender_id === currentUserId ? root.recipient_name ?? undefined : root.sender_name ?? undefined,
+      body: text,
+      parentId: root.id
+    });
+    setDbMessages(prev => [inserted, ...prev]);
+    showNotification('Reply sent', 'success');
+  };
+
+  const startThread = async (recipientId: string, text: string) => {
+    if (!text.trim() || !currentUserId) return;
+    const inserted = await sbSendMessage({
+      senderId: currentUserId,
+      senderName: user?.name,
+      recipientId,
+      recipientName: undefined,
+      body: text,
+      parentId: undefined,
+    });
+    setDbMessages(prev => [inserted, ...prev]);
+    showNotification('Message sent', 'success');
   };
 
   // Loading screen
@@ -262,6 +326,7 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
         user={user}
         isLoggedIn={isLoggedIn}
         onLogout={handleLogout}
+        unreadCount={unreadCount}
       />
       <main className="main-content">
         <Routes>
@@ -269,6 +334,32 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
           <Route path="/login" element={<LoginPage onLogin={handleLogin} onBack={() => navigate('/')} />} />
           <Route path="/add-book" element={isLoggedIn ? <AddBookForm onAddBook={addBook} /> : <Navigate to="/login" />} />
           <Route path="/books" element={<BookList books={books} onDeleteBook={deleteBook} isLoggedIn={isLoggedIn} onRentBook={rentBook} isAdmin={isAdmin} />} />
+          <Route path="/messages" element={isLoggedIn ? (
+            <Messages
+              messages={dbMessages
+                .filter(m => m.parent_id === null)
+                .map(m => ({
+                  id: m.id,
+                  senderName: m.sender_name || 'User',
+                  time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                  body: m.body,
+                  read: m.read,
+                  replies: dbMessages
+                    .filter(r => r.parent_id === m.id)
+                    .sort((a,b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+                    .map(r => ({
+                      id: r.id,
+                      text: r.body,
+                      time: new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                      senderName: r.sender_name || 'User',
+                      isMine: r.sender_id === currentUserId
+                    }))
+                }))}
+              onMarkRead={markMessageRead}
+              onSendReply={sendReply}
+              onStartThread={startThread}
+            />
+          ) : (<Navigate to="/login" />)} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="*" element={<Navigate to="/" />} />
