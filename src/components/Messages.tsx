@@ -29,6 +29,11 @@ const Messages: React.FC<MessagesProps> = ({ messages, onMarkRead, onSendReply, 
       setOpenMessageId('__new__');
     }
   }, [searchParams]);
+
+  // Czyszczenie replyText gdy użytkownik przełącza się między wątkami
+  useEffect(() => {
+    setReplyText('');
+  }, [openMessageId]);
   return (
     <section className="section">
       <div className="container hero messages-hero">
