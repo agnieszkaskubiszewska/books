@@ -20,7 +20,7 @@ interface MessagesProps {
 const Messages: React.FC<MessagesProps> = ({ messages, onMarkRead, onSendReply, onStartThread }) => {
   const [openMessageId, setOpenMessageId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState<string>('');
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
     const to = searchParams.get('to');
@@ -93,8 +93,8 @@ const Messages: React.FC<MessagesProps> = ({ messages, onMarkRead, onSendReply, 
                     rows={3}
                   />
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
-                    <button className="btn btn--ghost" onClick={() => setReplyText('')}>Cancel</button>
-                    <button className="btn" onClick={() => onStartThread(searchParams.get('to') as string, replyText)}>Send</button>
+                    <button className="btn btn--ghost" onClick={() => { setReplyText(''); const next = new URLSearchParams(searchParams); next.delete('to'); setSearchParams(next, { replace: true }); }}>Cancel</button>
+                    <button className="btn" onClick={() => { onStartThread(searchParams.get('to') as string, replyText); setReplyText(''); const next = new URLSearchParams(searchParams); next.delete('to'); setSearchParams(next, { replace: true }); }}>Send</button>
                   </div>
                 </div>
               </div>
