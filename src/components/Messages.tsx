@@ -56,15 +56,34 @@ const Messages: React.FC<MessagesProps> = ({ messages, onMarkRead, onSendReply, 
                 <div className="message-body">{m.body}</div>
                 {m.replies && m.replies.length > 0 && (
                   <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {m.replies.map(r => (
-                      <div key={r.id} style={{ background: 'rgba(45,186,104,0.06)', border: '1px solid #e5f3ea', borderRadius: 12, padding: 10 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                          <strong style={{ color: '#1b2430' }}>{r.isMine ? 'You' : r.senderName}</strong>
-                          <span style={{ color: '#7a8a99', fontWeight: 600 }}>{r.time}</span>
+                    {m.replies.map(r => {
+                      const bubbleBase = {
+                        borderRadius: 12,
+                        padding: 10,
+                        border: '1px solid #e5f3ea',
+                        background: 'rgba(45,186,104,0.06)',
+                        alignSelf: 'flex-start' as const,
+                        color: '#334155'
+                      };
+                      const bubbleMine = {
+                        background: 'linear-gradient(135deg, #2DBA68 0%, #228B22 100%)',
+                        border: '1px solid #2DBA68',
+                        color: '#fff',
+                        alignSelf: 'flex-end' as const
+                      };
+                      const style = r.isMine ? { ...bubbleBase, ...bubbleMine } : bubbleBase;
+                      const authorColor = r.isMine ? '#ffffff' : '#1b2430';
+                      const timeColor = r.isMine ? 'rgba(255,255,255,0.85)' : '#7a8a99';
+                      return (
+                        <div key={r.id} style={style}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                            <strong style={{ color: authorColor }}>{r.isMine ? 'You' : r.senderName}</strong>
+                            <span style={{ color: timeColor, fontWeight: 600 }}>{r.time}</span>
+                          </div>
+                          <div style={{ color: r.isMine ? '#ffffff' : '#334155' }}>{r.text}</div>
                         </div>
-                        <div style={{ color: '#334155' }}>{r.text}</div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
                 {openMessageId === m.id && (
