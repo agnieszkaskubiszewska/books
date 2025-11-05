@@ -284,8 +284,7 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
       senderId: currentUserId,
       recipientId,
       body: text,
-      replyToId: root.id
-    });
+      threadId: root.id    });
     setDbMessages(prev => [inserted, ...prev]);
     showNotification('Reply sent', 'success');
   };
@@ -296,7 +295,6 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
       senderId: currentUserId,
       recipientId,
       body: text,
-      replyToId: undefined,
     });
     setDbMessages(prev => [inserted, ...prev]);
     showNotification('Message sent', 'success');
@@ -333,21 +331,21 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
           <Route path="/messages" element={isLoggedIn ? (
             <Messages
               messages={dbMessages
-                .filter(m => m.reply_to_id === null)
+                .filter(m => m.thread_id === m.id)
                 .map(m => ({
                   id: m.id,
-                  senderName: m.sender_email ? m.sender_email.split('@')[0] : 'User',
+                  senderName: (m as any).sender_email ? (m as any).sender_email.split('@')[0] : 'User',
                   time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                   body: m.body,
                   read: m.read,
                   replies: dbMessages
-                    .filter(r => r.reply_to_id === m.id)
+                    .filter(r => r.thread_id === m.id && r.id !== m.id)
                     .sort((a,b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
                     .map(r => ({
                       id: r.id,
                       text: r.body,
                       time: new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                      senderName: r.sender_email ? r.sender_email.split('@')[0] : 'User',
+                      senderName: (r as any).sender_email ? (r as any).sender_email.split('@')[0] : 'User',
                       isMine: r.sender_id === currentUserId,
                       read: r.read,
                       toMe: r.recipient_id === currentUserId
