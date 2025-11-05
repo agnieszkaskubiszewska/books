@@ -25,7 +25,7 @@ const AppContent: React.FC = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [dbMessages, setDbMessages] = useState<DbMessage[]>([]);
-  const unreadCount = dbMessages.filter(m => !m.read && m.recipient_id === currentUserId && !m.parent_id).length;
+  const unreadCount = dbMessages.filter(m => !m.read && m.recipient_id === currentUserId && !m.reply_to_id).length;
 
 
   useEffect(() => {
@@ -282,11 +282,9 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
     const recipientId = root.sender_id === currentUserId ? root.recipient_id : root.sender_id;
     const inserted = await sbSendMessage({
       senderId: currentUserId,
-      senderName: user?.name,
       recipientId,
-  recipientName: root.sender_id === currentUserId ? root.recipient_name ?? undefined : root.sender_name ?? undefined,
       body: text,
-      parentId: root.id
+      replyToId: root.id
     });
     setDbMessages(prev => [inserted, ...prev]);
     showNotification('Reply sent', 'success');
@@ -296,11 +294,9 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
     if (!text.trim() || !currentUserId) return;
     const inserted = await sbSendMessage({
       senderId: currentUserId,
-      senderName: user?.name,
       recipientId,
-      recipientName: undefined,
       body: text,
-      parentId: undefined,
+      replyToId: undefined,
     });
     setDbMessages(prev => [inserted, ...prev]);
     showNotification('Message sent', 'success');
@@ -337,21 +333,21 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
           <Route path="/messages" element={isLoggedIn ? (
             <Messages
               messages={dbMessages
-                .filter(m => m.parent_id === null)
+                .filter(m => m.reply_to_id === null)
                 .map(m => ({
                   id: m.id,
-                  senderName: m.sender_name || 'User',
+                  senderName: m.sender_email ? m.sender_email.split('@')[0] : 'User',
                   time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                   body: m.body,
                   read: m.read,
                   replies: dbMessages
-                    .filter(r => r.parent_id === m.id)
+                    .filter(r => r.reply_to_id === m.id)
                     .sort((a,b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
                     .map(r => ({
                       id: r.id,
                       text: r.body,
                       time: new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                      senderName: r.sender_name || 'User',
+                      senderName: r.sender_email ? r.sender_email.split('@')[0] : 'User',
                       isMine: r.sender_id === currentUserId
                     }))
                 }))}

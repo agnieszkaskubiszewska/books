@@ -56,46 +56,52 @@ export const signInWithEmail = async (email: string, password: string) => {
 export type DbMessage = {
   id: string;
   sender_id: string;
-  sender_name: string | null;
+  sender_email: string | null;
   recipient_id: string;
-  recipient_name: string | null;
+  recipient_email: string | null;
   body: string;
-  parent_id: string | null;
+  reply_to_id: string | null;
   read: boolean;
   created_at: string;
 };
 
 export async function fetchMessagesForUser() {
-  const { data, error } = await supabase
-    .from('messages')
-    .select('*')
-    .order('created_at', { ascending: false });
+  // Używamy funkcji SQL która zwraca wiadomości z emailami użytkowników
+  const { data, error } = await supabase.rpc('get_messages_with_users');
   if (error) throw new Error(error.message);
   return (data || []) as DbMessage[];
 }
 
 export async function sendMessage(params: {
   senderId: string;
-  senderName?: string;
   recipientId: string;
-  recipientName?: string;
   body: string;
-  parentId?: string;
+  replyToId?: string;
 }) {
+  // Wstawiamy wiadomość bez sender_name i recipient_name
   const { data, error } = await supabase
     .from('messages')
     .insert([{ 
       sender_id: params.senderId,
-      sender_name: params.senderName ?? null,
       recipient_id: params.recipientId,
-      recipient_name: params.recipientName ?? null,
       body: params.body,
-      parent_id: params.parentId ?? null,
+      reply_to_id: params.replyToId ?? null,
     }])
     .select()
     .single();
   if (error) throw new Error(error.message);
-  return data as DbMessage;
+  
+  // Pobieramy wiadomość z emailami użytkowników przez funkcję SQL
+  const { data: messageWithUsers, error: fetchError } = await supabase.rpc('get_message_with_users', {
+    message_id: data.id
+  });
+  if (fetchError) throw new Error(fetchError.message);
+  
+  if (!messageWithUsers || messageWithUsers.length === 0) {
+    throw new Error('Message not found after insert');
+  }
+  
+  return messageWithUsers[0] as DbMessage;
 }
 
 export async function markMessageRead(messageId: string) {
