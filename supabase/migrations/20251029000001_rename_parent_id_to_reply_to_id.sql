@@ -38,8 +38,8 @@ as $$
     m.reply_to_id,
     m.read,
     m.created_at,
-    (select email from auth.users where id = m.sender_id) as sender_email,
-    (select email from auth.users where id = m.recipient_id) as recipient_email
+    (select email from public.users where id = m.sender_id) as sender_email,
+    (select email from public.users where id = m.recipient_id) as recipient_email
   from public.messages m
   where auth.uid() = m.sender_id or auth.uid() = m.recipient_id
   order by m.created_at desc;
@@ -70,8 +70,8 @@ as $$
     m.reply_to_id,
     m.read,
     m.created_at,
-    (select email from auth.users where id = m.sender_id) as sender_email,
-    (select email from auth.users where id = m.recipient_id) as recipient_email
+    (select email from public.users where id = m.sender_id) as sender_email,
+    (select email from public.users where id = m.recipient_id) as recipient_email
   from public.messages m
   where m.id = message_id
     and (auth.uid() = m.sender_id or auth.uid() = m.recipient_id);

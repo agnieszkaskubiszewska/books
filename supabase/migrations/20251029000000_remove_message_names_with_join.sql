@@ -1,5 +1,5 @@
 -- Usuń kolumny sender_name i recipient_name z tabeli messages
--- Zamiast tego użyjemy JOIN z auth.users przez funkcję SQL
+-- Zamiast tego użyjemy JOIN z public.users przez funkcję SQL
 
 -- 1. Usuń kolumny sender_name i recipient_name
 alter table public.messages 
@@ -7,7 +7,7 @@ alter table public.messages
   drop column if exists recipient_name;
 
 -- 2. Stwórz funkcję SQL która zwraca wiadomości z emailami użytkowników
--- Funkcja używa security definer aby móc odczytać auth.users
+-- Funkcja używa public.users (naszą tabelę użytkowników)
 create or replace function public.get_messages_with_users()
 returns table (
   id uuid,
@@ -32,8 +32,8 @@ as $$
     m.parent_id,
     m.read,
     m.created_at,
-    (select email from auth.users where id = m.sender_id) as sender_email,
-    (select email from auth.users where id = m.recipient_id) as recipient_email
+    (select email from public.users where id = m.sender_id) as sender_email,
+    (select email from public.users where id = m.recipient_id) as recipient_email
   from public.messages m
   where auth.uid() = m.sender_id or auth.uid() = m.recipient_id
   order by m.created_at desc;
@@ -64,8 +64,8 @@ as $$
     m.parent_id,
     m.read,
     m.created_at,
-    (select email from auth.users where id = m.sender_id) as sender_email,
-    (select email from auth.users where id = m.recipient_id) as recipient_email
+    (select email from public.users where id = m.sender_id) as sender_email,
+    (select email from public.users where id = m.recipient_id) as recipient_email
   from public.messages m
   where m.id = message_id
     and (auth.uid() = m.sender_id or auth.uid() = m.recipient_id);
