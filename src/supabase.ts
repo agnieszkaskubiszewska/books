@@ -60,48 +60,50 @@ export type DbMessage = {
   recipient_id: string;
   recipient_email: string | null;
   body: string;
-  reply_to_id: string | null;
+  thread_id: string | null;
   read: boolean;
   created_at: string;
 };
 
 export async function fetchMessagesForUser() {
-  // Używamy funkcji SQL która zwraca wiadomości z emailami użytkowników
-  const { data, error } = await supabase.rpc('get_messages_with_users');
+  // Tymczasowo selekcja bez RPC; jeśli masz RPC, dostosuj do thread_id
+  const { data, error } = await supabase
+    .from('messages')
+    .select('*')
+    .order('created_at', { ascending: false });
   if (error) throw new Error(error.message);
-  return (data || []) as DbMessage[];
+  return (data || []) as any as DbMessage[];
 }
 
 export async function sendMessage(params: {
   senderId: string;
   recipientId: string;
   body: string;
-  replyToId?: string;
+  threadId?: string;
 }) {
-  // Wstawiamy wiadomość bez sender_name i recipient_name
   const { data, error } = await supabase
     .from('messages')
     .insert([{ 
       sender_id: params.senderId,
       recipient_id: params.recipientId,
       body: params.body,
-      reply_to_id: params.replyToId ?? null,
+      thread_id: params.threadId ?? null,
     }])
     .select()
     .single();
   if (error) throw new Error(error.message);
-  
-  // Pobieramy wiadomość z emailami użytkowników przez funkcję SQL
-  const { data: messageWithUsers, error: fetchError } = await supabase.rpc('get_message_with_users', {
-    message_id: data.id
-  });
-  if (fetchError) throw new Error(fetchError.message);
-  
-  if (!messageWithUsers || messageWithUsers.length === 0) {
-    throw new Error('Message not found after insert');
+  // Jeśli tworzymy nowy wątek (brak threadId), ustaw thread_id = id
+  if (!params.threadId && data && (data as any).thread_id == null) {
+    const { data: updated, error: updErr } = await supabase
+      .from('messages')
+      .update({ thread_id: (data as any).id })
+      .eq('id', (data as any).id)
+      .select()
+      .single();
+    if (updErr) throw new Error(updErr.message);
+    return updated as any as DbMessage;
   }
-  
-  return messageWithUsers[0] as DbMessage;
+  return data as any as DbMessage;
 }
 
 export async function markMessageRead(messageId: string) {
