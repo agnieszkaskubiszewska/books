@@ -7,7 +7,7 @@ type MessageItem = {
   time: string;
   body: string;
   read: boolean;
-  replies?: { id: string; text: string; time: string; senderName: string; isMine?: boolean }[];
+  replies?: { id: string; text: string; time: string; senderName: string; isMine?: boolean; read?: boolean; toMe?: boolean }[];
 };
 
 interface MessagesProps {
@@ -42,7 +42,11 @@ const Messages: React.FC<MessagesProps> = ({ messages, onMarkRead, onSendReply, 
 <div className="container">
         <div className="messages-list">
           {messages.map(m => (
-            <div key={m.id} className="message-item" onClick={() => { setOpenMessageId(m.id); if (!m.read) onMarkRead(m.id); }}>
+            <div key={m.id} className="message-item" onClick={() => {
+              setOpenMessageId(m.id);
+              if (!m.read) onMarkRead(m.id);
+              m.replies?.forEach(r => { if (r.toMe && !r.read) onMarkRead(r.id); });
+            }}>
               <div className="message-avatar">{m.senderName.charAt(0).toUpperCase()}</div>
               <div className="message-content">
                 <div className="message-header">

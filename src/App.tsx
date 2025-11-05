@@ -25,7 +25,7 @@ const AppContent: React.FC = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [dbMessages, setDbMessages] = useState<DbMessage[]>([]);
-  const unreadCount = dbMessages.filter(m => !m.read && m.recipient_id === currentUserId && !m.reply_to_id).length;
+  const unreadCount = dbMessages.filter(m => !m.read && m.recipient_id === currentUserId).length;
 
 
   useEffect(() => {
@@ -348,7 +348,9 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
                       text: r.body,
                       time: new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                       senderName: r.sender_email ? r.sender_email.split('@')[0] : 'User',
-                      isMine: r.sender_id === currentUserId
+                      isMine: r.sender_id === currentUserId,
+                      read: r.read,
+                      toMe: r.recipient_id === currentUserId
                     }))
                 }))}
               onMarkRead={markMessageRead}
