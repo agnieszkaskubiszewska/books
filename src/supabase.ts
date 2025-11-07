@@ -90,7 +90,7 @@ export async function sendMessage(params: {
       thread_id: params.threadId ?? null,
     }])
     .select()
-    .single();
+    .maybeSingle();
   if (error) throw new Error(error.message);
   // Jeśli tworzymy nowy wątek (brak threadId), ustaw thread_id = id
   if (!params.threadId && data && (data as any).thread_id == null) {
@@ -99,7 +99,7 @@ export async function sendMessage(params: {
       .update({ thread_id: (data as any).id })
       .eq('id', (data as any).id)
       .select()
-      .single();
+      .maybeSingle();
     if (updErr) throw new Error(updErr.message);
     return updated as any as DbMessage;
   }
