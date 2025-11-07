@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
+import { supabase} from '../supabase';
 import { Book, Genre } from '../types';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import BookView from './bookView';
@@ -14,11 +15,12 @@ interface BookListProps {
   books: Book[];
   onDeleteBook: (id: string) => void;
   isLoggedIn: boolean;
-  onRentBook: (id: string) => void;
+  onRent: (id: string) => void;
   isAdmin?: boolean;
 }
 
-const BookList: React.FC<BookListProps> = ({ books, onDeleteBook, isLoggedIn, onRentBook, isAdmin }) => {
+
+const BookList: React.FC<BookListProps> = ({ books, onDeleteBook, isLoggedIn, onRent, isAdmin }) => {
   const getGenreName = (genre: Genre): string => {
     const genres: Record<Genre, string> = {
       'fantasy': 'Fantasy',
@@ -32,12 +34,26 @@ const BookList: React.FC<BookListProps> = ({ books, onDeleteBook, isLoggedIn, on
     };
     return genres[genre] || genre;
   };
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [bookInfo, setBookInfo] = useState<{ title: string; author: string; } | null>(null);
+
+  useEffect(() => {
+    const id = searchParams.get('book');
+    if (!id) { setBookInfo(null); return; }
+    (async () => {
+      const { data, error } = await supabase
+        .from('books')
+        .select('title,author,image')
+        .eq('id', id)
+        .single();
+      setBookInfo(!error && data ? { title: data.title, author: data.author } : null);
+    })();
+  }, [searchParams]);
 
   const renderStars = (rating: number) => {
     return '⭐'.repeat(rating);
   };
 
-  const [searchParams, setSearchParams] = useSearchParams();
 
   const initialRent = (() => {
     const r = searchParams.get('rent');
@@ -245,12 +261,10 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
                       className="rent-a book"
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (book.ownerId) {
-                          navigate(`/messages?to=${book.ownerId}`);
+                    if (book.ownerId) {
+                      navigate(`/messages?to=${book.ownerId}&book=${book.id}`);
                         } else {
                           navigate('/messages');
-                          // opcjonalnie można dodać notyfikację, jeśli masz globalne
-                          // window.alert('Brak właściciela tej książki – nie można rozpocząć rozmowy.');
                         }
                       }}
                     >
@@ -272,7 +286,7 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
         book={selectedBook}
         isOpen={!!selectedBook}
         onClose={() => setSelectedBook(null)}
-        onRent={onRentBook}
+        onRent={onRent}
         onDelete={onDeleteBook}
         isLoggedIn={isLoggedIn}
         isAdmin={isAdmin}

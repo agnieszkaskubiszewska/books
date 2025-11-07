@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { supabase } from '../supabase';
 import { useSearchParams } from 'react-router-dom';
 
 type MessageItem = {
@@ -6,6 +7,7 @@ type MessageItem = {
   senderName: string;
   time: string;
   body: string;
+  bookTitle?: string;
   read: boolean;
   replies?: { id: string; text: string; time: string; senderName: string; isMine?: boolean; read?: boolean; toMe?: boolean }[];
 };
@@ -21,6 +23,21 @@ const Messages: React.FC<MessagesProps> = ({ messages, onMarkRead, onSendReply, 
   const [openMessageId, setOpenMessageId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState<string>('');
   const [searchParams, setSearchParams] = useSearchParams();
+  
+  const [bookTitle, setBookTitle] = useState<string | null>(null);
+
+useEffect(() => {
+  const id = searchParams.get('book');
+  if (!id) { setBookTitle(null); return; }
+  (async () => {
+    const { data, error } = await supabase
+      .from('books')
+      .select('title')
+      .eq('id', id)
+      .single();
+    setBookTitle(!error ? data?.title ?? null : null);
+  })();
+}, [searchParams]);
 
   useEffect(() => {
     const to = searchParams.get('to');
@@ -111,6 +128,9 @@ const Messages: React.FC<MessagesProps> = ({ messages, onMarkRead, onSendReply, 
               <div className="message-content">
                 <div className="message-header">
                   <div className="message-sender">New message</div>
+                  {bookTitle && (
+<div className="message-about-book"> You want to rent book: <strong>{bookTitle}</strong></div>
+                  )}
                 </div>
                 <div style={{ marginTop: 12 }}>
                   <textarea
@@ -121,8 +141,33 @@ const Messages: React.FC<MessagesProps> = ({ messages, onMarkRead, onSendReply, 
                     rows={3}
                   />
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
-                    <button className="btn btn--ghost" onClick={() => { setReplyText(''); const next = new URLSearchParams(searchParams); next.delete('to'); setSearchParams(next, { replace: true }); }}>Cancel</button>
-                    <button className="btn" onClick={() => { onStartThread(searchParams.get('to') as string, replyText); setReplyText(''); const next = new URLSearchParams(searchParams); next.delete('to'); setSearchParams(next, { replace: true }); }}>Send</button>
+                  <button
+  className="btn btn--ghost"
+  onClick={() => {
+    setReplyText('');
+    const next = new URLSearchParams(searchParams);
+    next.delete('to');
+    next.delete('book');
+    setSearchParams(next, { replace: true });
+  }}
+>
+  Cancel
+</button>
+
+<button
+  className="btn"
+  onClick={() => {
+    const to = searchParams.get('to');
+    if (!to || !replyText.trim()) return;
+    onStartThread(to, replyText);
+    setReplyText('');
+    const next = new URLSearchParams(searchParams);
+    next.delete('to'); next.delete('book');
+    setSearchParams(next, { replace: true });
+  }}
+>
+  Send
+</button>
                   </div>
                 </div>
               </div>
