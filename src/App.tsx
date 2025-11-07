@@ -25,8 +25,9 @@ const AppContent: React.FC = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [dbMessages, setDbMessages] = useState<DbMessage[]>([]);
-  const unreadCount = dbMessages.filter(m => !m.read && m.recipient_id === currentUserId).length;
-
+  const unreadCount = dbMessages
+  .filter((m): m is DbMessage => !!m)
+  .filter(m => !m.read && m.recipient_id === currentUserId).length;
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -280,23 +281,17 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
     if (!text.trim() || !currentUserId) return;
     const root = dbMessages.find(m => m.id === rootId); if (!root) return;
     const recipientId = root.sender_id === currentUserId ? root.recipient_id : root.sender_id;
-    const inserted = await sbSendMessage({
-      senderId: currentUserId,
-      recipientId,
-      body: text,
-      threadId: root.id    });
-    setDbMessages(prev => [inserted, ...prev]);
+    const inserted = await sbSendMessage({ senderId: currentUserId, recipientId, body: text, threadId: root.id });
+    if (inserted) setDbMessages(prev => [inserted, ...prev]);
+    else setDbMessages(await fetchMessagesForUser());
     showNotification('Reply sent', 'success');
   };
 
   const startThread = async (recipientId: string, text: string) => {
     if (!text.trim() || !currentUserId) return;
-    const inserted = await sbSendMessage({
-      senderId: currentUserId,
-      recipientId,
-      body: text,
-    });
-    setDbMessages(prev => [inserted, ...prev]);
+    const inserted = await sbSendMessage({ senderId: currentUserId, recipientId, body: text });
+    if (inserted) setDbMessages(prev => [inserted, ...prev]);
+    else setDbMessages(await fetchMessagesForUser());
     showNotification('Message sent', 'success');
   };
 
@@ -330,18 +325,19 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
     <Route path="/books" element={<BookList books={books} onDeleteBook={deleteBook} isLoggedIn={isLoggedIn} onRent={rentBook} isAdmin={isAdmin} />} />
           <Route path="/messages" element={isLoggedIn ? (
             <Messages
-  messages={dbMessages
-                .filter(m => m.thread_id === m.id)
-                .map(m => ({
-                  id: m.id,
-                  senderName: (m as any).sender_email ? (m as any).sender_email.split('@')[0] : 'User',
-                  time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                  body: m.body,
-                  read: m.read,
-                  replies: dbMessages
-                    .filter(r => r.thread_id === m.id && r.id !== m.id)
-                    .sort((a,b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-                    .map(r => ({
+            messages={dbMessages
+              .filter((m): m is DbMessage => !!m)       
+              .filter(m => m.thread_id === m.id || m.thread_id === null)
+              .map(m => ({
+                id: m.id,
+                senderName: (m as any).sender_email ? (m as any).sender_email.split('@')[0] : 'User',
+                time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                body: m.body,
+                read: m.read,
+                replies: dbMessages
+                  .filter(r => r.thread_id === m.id && r.id !== m.id)
+                  .sort((a,b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+                  .map(r => ({
                       id: r.id,
                       text: r.body,
                       time: new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
