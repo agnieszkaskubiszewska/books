@@ -327,10 +327,10 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
           <Route path="/" element={<Welcome isLoggedIn={isLoggedIn} />} />
           <Route path="/login" element={<LoginPage onLogin={handleLogin} onBack={() => navigate('/')} />} />
           <Route path="/add-book" element={isLoggedIn ? <AddBookForm onAddBook={addBook} /> : <Navigate to="/login" />} />
-          <Route path="/books" element={<BookList books={books} onDeleteBook={deleteBook} isLoggedIn={isLoggedIn} onRentBook={rentBook} isAdmin={isAdmin} />} />
+    <Route path="/books" element={<BookList books={books} onDeleteBook={deleteBook} isLoggedIn={isLoggedIn} onRent={rentBook} isAdmin={isAdmin} />} />
           <Route path="/messages" element={isLoggedIn ? (
             <Messages
-              messages={dbMessages
+  messages={dbMessages
                 .filter(m => m.thread_id === m.id)
                 .map(m => ({
                   id: m.id,
