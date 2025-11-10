@@ -5,7 +5,7 @@ import { Section } from '../types';
 interface HeaderProps {
   currentSection: Section;
   onSectionChange: (section: Section) => void;
-  user: { name: string; email: string } | null;
+  user: { name: string; email: string, firstName: string, lastName: string } | null;
   isLoggedIn: boolean;
   onLogout: () => void;
   unreadCount?: number;
@@ -17,6 +17,23 @@ const Header: React.FC<HeaderProps> = ({ currentSection, onSectionChange, user, 
   const [isMessagesMenuOpen, setIsMessagesMenuOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+
+  const initials = React.useMemo(() => {
+    if (!user) return '';
+    const f = (user.firstName || '').trim();
+    const l = (user.lastName || '').trim();
+    if (f || l) {
+      return `${(f.charAt(0) || '')}${(l.charAt(0) || '')}`.toUpperCase();
+    }
+    const n = (user.name || '').trim();
+    const emailLocal = (user.email || '').split('@')[0] || '';
+    const base = n || emailLocal;
+    const parts = base.split(/[\s._-]+/).filter(Boolean);
+    if (parts.length >= 2) {
+      return `${(parts[0][0] || '')}${(parts[1][0] || '')}`.toUpperCase();
+    }
+    return (base.charAt(0) || '').toUpperCase();
+  }, [user]);
 
   const handleMenuClick = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -129,8 +146,12 @@ const handleSectionClick = (section: Section) => {
             onClick={handleUserMenuClick}
           >
             {isLoggedIn && user ? (
-              <div className="user-avatar-text">
-                {user.name.charAt(0).toUpperCase()}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div className="user-avatar-text">
+                  {initials}
+                </div>
+                <span className="user-name">{user.firstName + ' ' + user.lastName || user.name}
+                </span>
               </div>
             ) : (
               <div className="user-icon">
@@ -145,7 +166,7 @@ const handleSectionClick = (section: Section) => {
             {isLoggedIn && user ? (
               <>
                 <div className="user-info">
-                  <span className="user-name">{user.name}</span>
+        <span className="user-name">{[user.firstName, user.lastName].filter(Boolean).join(' ') || user.name}</span>
                   <span className="user-email">{user.email}</span>
                 </div>
         <button className="user-menu-item" onClick={handleMessagesMenuClick}>

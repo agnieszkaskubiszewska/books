@@ -20,11 +20,13 @@ const AppContent: React.FC = () => {
   const [currentSection, setCurrentSection] = useState<Section>('welcome');
   const [notification, setNotification] = useState<{ message: string; type?: 'success' | 'error' | 'info' } | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [user, setUser] = useState<{ name: string; email: string } | null>(null);
+  const [user, setUser] = useState<{ name: string; email: string, firstName: string, lastName: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [dbMessages, setDbMessages] = useState<DbMessage[]>([]);
+  const [threadTitles, setThreadTitles] = useState<Record<string, string>>({});
+  const [threadOwners, setThreadOwners] = useState<Record<string, string>>({});
   const unreadCount = dbMessages
   .filter((m): m is DbMessage => !!m)
   .filter(m => !m.read && m.recipient_id === currentUserId).length;
@@ -34,9 +36,14 @@ const AppContent: React.FC = () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
+          const meta: any = (session.user as any).user_metadata || {};
+          const firstName = typeof meta.first_name === 'string' ? meta.first_name : '';
+          const lastName = typeof meta.last_name === 'string' ? meta.last_name : '';
           setUser({
             name: session.user.email?.split('@')[0] || 'User',
-            email: session.user.email || ''
+            email: session.user.email || '',
+            firstName,
+            lastName,
           });
           setIsLoggedIn(true);
           setIsAdmin((session.user.app_metadata as any)?.role === 'admin');
@@ -54,9 +61,14 @@ const AppContent: React.FC = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         if (session?.user) {
+          const meta: any = (session.user as any).user_metadata || {};
+          const firstName = typeof meta.first_name === 'string' ? meta.first_name : '';
+          const lastName = typeof meta.last_name === 'string' ? meta.last_name : '';
           setUser({
             name: session.user.email?.split('@')[0] || 'User',
-            email: session.user.email || ''
+            email: session.user.email || '',
+            firstName,
+            lastName,
           });
           setIsLoggedIn(true);
           setIsAdmin((session.user.app_metadata as any)?.role === 'admin');
@@ -124,6 +136,84 @@ const AppContent: React.FC = () => {
       }
     })();
   }, [isLoggedIn, currentUserId]);
+
+  // Resolve book titles for threads visible in dbMessages
+  useEffect(() => {
+    (async () => {
+      try {
+        const threadIds = Array.from(
+          new Set(
+            (dbMessages || [])
+              .map(m => m.thread_id)
+              .filter((id): id is string => !!id)
+          )
+        );
+        if (threadIds.length === 0) {
+          setThreadTitles({});
+          return;
+        }
+        const { data: threads, error: thErr } = await supabase
+          .from('threads')
+          .select('id, book_id, owner_id')
+          .in('id', threadIds);
+        if (thErr) {
+          console.error('Error fetching threads:', thErr);
+          return;
+        }
+        const bookIds = Array.from(new Set((threads || []).map((t: any) => t.book_id).filter(Boolean)));
+        const ownerIds = Array.from(new Set((threads || []).map((t: any) => t.owner_id).filter(Boolean)));
+        if (bookIds.length === 0) {
+          setThreadTitles({});
+          setThreadOwners({});
+          return;
+        }
+        const { data: booksRows, error: bErr } = await supabase
+          .from('books')
+          .select('id, title')
+          .in('id', bookIds);
+        if (bErr) {
+          console.error('Error fetching books for threads:', bErr);
+          return;
+        }
+        let usersRows: any[] = [];
+        if (ownerIds.length > 0) {
+          const { data: uRows, error: uErr } = await supabase
+            .from('users')
+            .select('id, first_name, last_name, email')
+            .in('id', ownerIds);
+          if (uErr) {
+            console.error('Error fetching owners for threads:', uErr);
+          } else {
+            usersRows = uRows || [];
+          }
+        }
+        const bookIdToTitle = new Map<string, string>(
+          (booksRows || []).map((b: any) => [String(b.id), String(b.title ?? '')])
+        );
+        const userIdToName = new Map<string, string>(
+          (usersRows || []).map((u: any) => {
+            const first = (u.first_name || '').trim();
+            const last = (u.last_name || '').trim();
+            const full = [first, last].filter(Boolean).join(' ');
+            const fallback = (u.email || '').split('@')[0] || '';
+            return [String(u.id), full || fallback];
+          })
+        );
+        const mapThreadToTitle: Record<string, string> = {};
+        const mapThreadToOwner: Record<string, string> = {};
+        (threads || []).forEach((t: any) => {
+          const title = bookIdToTitle.get(String(t.book_id));
+          if (title) mapThreadToTitle[String(t.id)] = title;
+          const ownerName = userIdToName.get(String(t.owner_id));
+          if (ownerName) mapThreadToOwner[String(t.id)] = ownerName;
+        });
+        setThreadTitles(mapThreadToTitle);
+        setThreadOwners(mapThreadToOwner);
+      } catch (err) {
+        console.error('Error resolving thread titles:', err);
+      }
+    })();
+  }, [dbMessages]);
 
   const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     setNotification({ message, type });
@@ -292,19 +382,22 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
   const startThread = async (recipientId: string, text: string, bookId?: string | null) => {
     if (!text.trim() || !currentUserId) return;
     if (!bookId) { showNotification('Brak bookId dla nowej rozmowy.', 'error'); return; }
-  
-    const threadId = await sbGetOrCreateThread({ bookId, currentUserId, recipientId });
-  
-    const inserted = await sbSendMessage({
-      senderId: currentUserId,
-      recipientId,
-      body: text,
-      threadId
-    });
-  
-    if (inserted) setDbMessages(prev => [inserted, ...prev]);
-    else setDbMessages(await fetchMessagesForUser());
-    showNotification('Message sent', 'success');
+    try {
+      const threadId = await sbGetOrCreateThread({ bookId, currentUserId, recipientId });
+      const inserted = await sbSendMessage({
+        senderId: currentUserId,
+        recipientId,
+        body: text,
+        threadId
+      });
+      if (inserted) setDbMessages(prev => [inserted, ...prev]);
+      else setDbMessages(await fetchMessagesForUser());
+      showNotification('Message sent', 'success');
+    } catch (e: any) {
+      console.error('startThread error:', e);
+      showNotification(e?.message ?? 'Nie udało się rozpocząć rozmowy.', 'error');
+      return;
+    }
   };
 
   // Loading screen
@@ -355,6 +448,8 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
                 time: new Date(head.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                 body: head.body,
                 read: head.read,
+                bookTitle: head.thread_id ? threadTitles[head.thread_id] : undefined,
+                ownerName: head.thread_id ? threadOwners[head.thread_id] : undefined,
                 replies: sortedAsc.slice(1).map(r => ({
                   id: r.id,
                   text: r.body,

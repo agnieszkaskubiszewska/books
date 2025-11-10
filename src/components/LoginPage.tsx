@@ -19,6 +19,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack }) => {
   const [showResetPassword, setShowResetPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [resetMessage, setResetMessage] = useState('');
+  const [name, setName] = useState('');
+  const [surname, setSurname] = useState('');
   const navigate = useNavigate();
 
   // Ensure default view is Login (no confirm password)
@@ -41,7 +43,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack }) => {
           return;
         }
         const emailTrimmed = email.trim();
-const { user } = await signUpWithEmail(emailTrimmed, password);
+const { user } = await signUpWithEmail(emailTrimmed, password, { firstName: name, lastName: surname });
 if (user) {
 setSuccess('Check your email for verification');
   setError('');
@@ -128,6 +130,12 @@ setSuccess('Check your email for verification');
       <div className="login-container">
         <h2>{isSignUp ? 'Registration' : 'Login'}</h2>
         <form onSubmit={handleSubmit}>
+          {isSignUp && (
+            <div className="log-group">
+              <input type="text" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" required/>
+              <input type="text" placeholder="Surname" value={surname} onChange={(e) => setSurname(e.target.value)} autoComplete="surname" required/>
+            </div>
+          )}
           <div className="log-group">
             <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required/>
             <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete={isSignUp ? 'new-password' : 'current-password'} required/>
