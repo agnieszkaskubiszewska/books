@@ -11,7 +11,7 @@ import LoginPage from './components/LoginPage';
 import Messages from './components/Messages';
 import { Book, Section, Genre } from './types';
 import { supabase } from './supabase';
-import { fetchMessagesForUser, sendMessage as sbSendMessage, markMessageRead as sbMarkMessageRead, type DbMessage } from './supabase';
+import { fetchMessagesForUser,getOrCreateThread as sbGetOrCreateThread, sendMessage as sbSendMessage, markMessageRead as sbMarkMessageRead, type DbMessage } from './supabase';
 
 const AppContent: React.FC = () => {
   const navigate = useNavigate();
@@ -281,15 +281,27 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
     if (!text.trim() || !currentUserId) return;
     const root = dbMessages.find(m => m.id === rootId); if (!root) return;
     const recipientId = root.sender_id === currentUserId ? root.recipient_id : root.sender_id;
-    const inserted = await sbSendMessage({ senderId: currentUserId, recipientId, body: text, threadId: root.id });
+    const threadId = root.thread_id ?? root.id;
+    const inserted = await sbSendMessage({ senderId: currentUserId, recipientId, body: text, threadId });
     if (inserted) setDbMessages(prev => [inserted, ...prev]);
     else setDbMessages(await fetchMessagesForUser());
     showNotification('Reply sent', 'success');
   };
 
-  const startThread = async (recipientId: string, text: string) => {
+
+  const startThread = async (recipientId: string, text: string, bookId?: string | null) => {
     if (!text.trim() || !currentUserId) return;
-    const inserted = await sbSendMessage({ senderId: currentUserId, recipientId, body: text });
+    if (!bookId) { showNotification('Brak bookId dla nowej rozmowy.', 'error'); return; }
+  
+    const threadId = await sbGetOrCreateThread({ bookId, currentUserId, recipientId });
+  
+    const inserted = await sbSendMessage({
+      senderId: currentUserId,
+      recipientId,
+      body: text,
+      threadId
+    });
+  
     if (inserted) setDbMessages(prev => [inserted, ...prev]);
     else setDbMessages(await fetchMessagesForUser());
     showNotification('Message sent', 'success');
@@ -325,28 +337,35 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
     <Route path="/books" element={<BookList books={books} onDeleteBook={deleteBook} isLoggedIn={isLoggedIn} onRent={rentBook} isAdmin={isAdmin} />} />
           <Route path="/messages" element={isLoggedIn ? (
             <Messages
-            messages={dbMessages
-              .filter((m): m is DbMessage => !!m)       
-              .filter(m => m.thread_id === m.id || m.thread_id === null)
-              .map(m => ({
-                id: m.id,
-                senderName: (m as any).sender_email ? (m as any).sender_email.split('@')[0] : 'User',
-                time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                body: m.body,
-                read: m.read,
-                replies: dbMessages
-                  .filter(r => r.thread_id === m.id && r.id !== m.id)
-                  .sort((a,b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-                  .map(r => ({
-                      id: r.id,
-                      text: r.body,
-                      time: new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                      senderName: (r as any).sender_email ? (r as any).sender_email.split('@')[0] : 'User',
-                      isMine: r.sender_id === currentUserId,
-                      read: r.read,
-                      toMe: r.recipient_id === currentUserId
-                    }))
-                }))}
+            messages={Array.from(
+              (dbMessages || []).reduce((acc, m) => {
+                const key = m.thread_id ?? m.id; 
+                if (!acc.has(key)) acc.set(key, []);
+                acc.get(key)!.push(m);
+                return acc;
+              }, new Map<string, DbMessage[]>())
+            ).map(([key, msgs]) => {
+              const sortedAsc = msgs.slice().sort(
+                (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+              );
+              const head = sortedAsc[0];
+              return {
+                id: head.id,
+                senderName: (head as any).sender_email ? (head as any).sender_email.split('@')[0] : 'User',
+                time: new Date(head.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                body: head.body,
+                read: head.read,
+                replies: sortedAsc.slice(1).map(r => ({
+                  id: r.id,
+                  text: r.body,
+                  time: new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                  senderName: (r as any).sender_email ? (r as any).sender_email.split('@')[0] : 'User',
+                  isMine: r.sender_id === currentUserId,
+                  read: r.read,
+                  toMe: r.recipient_id === currentUserId
+                })),
+              };
+            })}
               onMarkRead={markMessageRead}
               onSendReply={sendReply}
               onStartThread={startThread}
