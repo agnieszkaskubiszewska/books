@@ -79,7 +79,7 @@ export async function sendMessage(params: {
   senderId: string;
   recipientId: string;
   body: string;
-  threadId?: string;
+  threadId: string;
 }) {
   const { data, error } = await supabase
     .from('messages')
@@ -87,22 +87,11 @@ export async function sendMessage(params: {
       sender_id: params.senderId,
       recipient_id: params.recipientId,
       body: params.body,
-      thread_id: params.threadId ?? null,
+      thread_id: params.threadId,
     }])
     .select()
     .maybeSingle();
   if (error) throw new Error(error.message);
-  // Jeśli tworzymy nowy wątek (brak threadId), ustaw thread_id = id
-  if (!params.threadId && data && (data as any).thread_id == null) {
-    const { data: updated, error: updErr } = await supabase
-      .from('messages')
-      .update({ thread_id: (data as any).id })
-      .eq('id', (data as any).id)
-      .select()
-      .maybeSingle();
-    if (updErr) throw new Error(updErr.message);
-    return updated as any as DbMessage;
-  }
   return data as any as DbMessage;
 }
 
@@ -112,4 +101,40 @@ export async function markMessageRead(messageId: string) {
     .update({ read: true })
     .eq('id', messageId);
   if (error) throw new Error(error.message);
+}
+
+export async function getOrCreateThread(params: {
+  bookId: string;
+  currentUserId: string;
+  recipientId: string;
+}) {
+  const { bookId, currentUserId, recipientId } = params;
+
+  const { data: book, error: bookErr } = await supabase
+    .from('books')
+    .select('owner_id')
+    .eq('id', bookId)
+    .single();
+  if (bookErr) throw new Error(bookErr.message);
+
+  const ownerId = (book as any).owner_id as string;
+  const otherUserId = currentUserId === ownerId ? recipientId : currentUserId;
+
+  const { data: existing, error: selErr } = await supabase
+    .from('threads')
+    .select('id')
+    .eq('book_id', bookId)
+    .eq('owner_id', ownerId)
+    .eq('other_user_id', otherUserId)
+    .maybeSingle();
+  if (selErr && selErr.code !== 'PGRST116') throw new Error(selErr.message);
+  if (existing?.id) return existing.id as string;
+
+  const { data: created, error: insErr } = await supabase
+    .from('threads')
+    .insert([{ book_id: bookId, owner_id: ownerId, other_user_id: otherUserId }])
+    .select('id')
+    .maybeSingle();
+  if (insErr) throw new Error(insErr.message);
+  return created!.id as string;
 }

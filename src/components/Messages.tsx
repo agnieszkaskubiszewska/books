@@ -16,7 +16,7 @@ interface MessagesProps {
   messages: MessageItem[];
   onMarkRead: (id: string) => void;
   onSendReply: (id: string, text: string) => void;
-  onStartThread: (recipientId: string, text: string) => void;
+  onStartThread: (recipientId: string, text: string, bookId?: string | null) => void;
 }
 
 const Messages: React.FC<MessagesProps> = ({ messages, onMarkRead, onSendReply, onStartThread }) => {
@@ -64,7 +64,7 @@ useEffect(() => {
               if (!m.read) onMarkRead(m.id);
               m.replies?.forEach(r => { if (r.toMe && !r.read) onMarkRead(r.id); });
             }}>
-              <div className="message-avatar">{m.senderName.charAt(0).toUpperCase()}</div>
+          <div className="message-avatar">{m.senderName.charAt(0).toUpperCase()}</div>
               <div className="message-content">
                 <div className="message-header">
                   <div className="message-sender">{m.senderName}</div>
@@ -158,8 +158,9 @@ useEffect(() => {
   className="btn"
   onClick={() => {
     const to = searchParams.get('to');
+    const bookId = searchParams.get('book');
     if (!to || !replyText.trim()) return;
-    onStartThread(to, replyText);
+    onStartThread(to, replyText, bookId);
     setReplyText('');
     const next = new URLSearchParams(searchParams);
     next.delete('to'); next.delete('book');
