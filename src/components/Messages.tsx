@@ -8,6 +8,7 @@ type MessageItem = {
   time: string;
   body: string;
   bookTitle?: string;
+  ownerName?: string;
   read: boolean;
   replies?: { id: string; text: string; time: string; senderName: string; isMine?: boolean; read?: boolean; toMe?: boolean }[];
 };
@@ -42,12 +43,10 @@ useEffect(() => {
   useEffect(() => {
     const to = searchParams.get('to');
     if (to) {
-      // jeśli przychodzimy z /messages?to=<ownerId>, pokaż prosty formularz startu wątku do tego usera
       setOpenMessageId('__new__');
     }
   }, [searchParams]);
 
-  // Czyszczenie replyText gdy użytkownik przełącza się między wątkami
   useEffect(() => {
     setReplyText('');
   }, [openMessageId]);
@@ -59,13 +58,36 @@ useEffect(() => {
 <div className="container">
         <div className="messages-list">
           {messages.map(m => (
-            <div key={m.id} className="message-item" onClick={() => {
+            <div
+              key={m.id}
+              className="message-item"
+              onClick={() => {
               setOpenMessageId(m.id);
               if (!m.read) onMarkRead(m.id);
               m.replies?.forEach(r => { if (r.toMe && !r.read) onMarkRead(r.id); });
-            }}>
-          <div className="message-avatar">{m.senderName.charAt(0).toUpperCase()}</div>
-              <div className="message-content">
+            }}
+              style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
+            >
+              {m.bookTitle && (
+                <div
+                  className="message-thread-header"
+                  style={{
+                    alignSelf: 'flex-start',
+                    background: '#f1f5f9',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: 9999,
+                    padding: '2px 10px',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: '#334155'
+                  }}
+                >
+chat with owner {m.ownerName} about book: {m.bookTitle}
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                <div className="message-avatar">{m.senderName.charAt(0).toUpperCase()}</div>
+                <div className="message-content">
                 <div className="message-header">
                   <div className="message-sender">{m.senderName}</div>
                   <div className="message-time">{m.time}</div>
@@ -103,21 +125,22 @@ useEffect(() => {
                     })}
                   </div>
                 )}
-                {openMessageId === m.id && (
-                  <div style={{ marginTop: 12 }}>
-                    <textarea
-                      value={replyText}
-                      onChange={(e) => setReplyText(e.target.value)}
-                      placeholder="Write a reply..."
-                      style={{ width: '100%', padding: 10, borderRadius: 12, border: '1px solid #e5e7eb' }}
-                      rows={3}
-                    />
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
-                      <button className="btn btn--ghost" onClick={(e) => { e.stopPropagation(); setOpenMessageId(null); setReplyText(''); }}>Cancel</button>
-                      <button className="btn" onClick={(e) => { e.stopPropagation(); onSendReply(m.id, replyText); setReplyText(''); }}>Send</button>
+                  {openMessageId === m.id && (
+                    <div style={{ marginTop: 12 }}>
+                      <textarea
+                        value={replyText}
+                        onChange={(e) => setReplyText(e.target.value)}
+                        placeholder="Write a reply..."
+                        style={{ width: '100%', padding: 10, borderRadius: 12, border: '1px solid #e5e7eb' }}
+                        rows={3}
+                      />
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
+                        <button className="btn btn--ghost" onClick={(e) => { e.stopPropagation(); setOpenMessageId(null); setReplyText(''); }}>Cancel</button>
+                        <button className="btn" onClick={(e) => { e.stopPropagation(); onSendReply(m.id, replyText); setReplyText(''); }}>Send</button>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             </div>
           ))}

@@ -19,18 +19,33 @@ export const signInWithEmail = async (email: string, password: string) => {
     return data
   }
 //rejestracja
-  export const signUpWithEmail = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-    })
-    
-    if (error) {
-      throw new Error(error.message)
+// stara sygnatura:
+// export const signUpWithEmail = async (email: string, password: string) => { ... }
+
+export const signUpWithEmail = async (
+  email: string,
+  password: string,
+  profile?: { firstName?: string; lastName?: string }
+) => {
+  const fullName = [profile?.firstName?.trim(), profile?.lastName?.trim()].filter(Boolean).join(' ') || null;
+
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: {
+        first_name: profile?.firstName || null,
+        last_name: profile?.lastName || null,
+        full_name: fullName,
+      }
     }
-    
-    return data
+  });
+
+  if (error) {
+    throw new Error(error.message);
   }
+  return data;
+};
 
   export const signOut = async () => {
     const { error } = await supabase.auth.signOut()
@@ -119,6 +134,11 @@ export async function getOrCreateThread(params: {
 
   const ownerId = (book as any).owner_id as string;
   const otherUserId = currentUserId === ownerId ? recipientId : currentUserId;
+
+  // Guard: nie pozwalaj tworzyć wątku z samym sobą (owner == other)
+  if (ownerId === otherUserId) {
+    throw new Error('Nie możesz rozpocząć rozmowy ze sobą (właściciel książki).');
+  }
 
   const { data: existing, error: selErr } = await supabase
     .from('threads')
