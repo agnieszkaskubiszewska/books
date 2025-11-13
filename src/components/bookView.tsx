@@ -1,5 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Book } from '../types';
+import { getOwnerName } from '../supabase';
 
 interface BookViewProps {
   book: Book | null;
@@ -14,6 +15,8 @@ interface BookViewProps {
 const BookView: React.FC<BookViewProps> = ({ book, isOpen, onClose, onRent, onDelete, isLoggedIn, isAdmin }) => {
   if (!isOpen || !book) return null;
 
+  const [ownerName, setOwnerName] = useState<string>('');
+
   useEffect(() => {
     if (isOpen) {
       document.body.classList.add('modal-open');
@@ -23,6 +26,18 @@ const BookView: React.FC<BookViewProps> = ({ book, isOpen, onClose, onRent, onDe
     return () => document.body.classList.remove('modal-open');
   }, [isOpen]);
   
+  useEffect(() => {
+    if (!book?.ownerId) {
+      setOwnerName('');
+      return;
+    }
+    let cancelled = false;
+    getOwnerName(book.ownerId as string)
+      .then(name => { if (!cancelled) setOwnerName(name); })
+      .catch(() => { if (!cancelled) setOwnerName(''); });
+    return () => { cancelled = true; };
+  }, [book?.ownerId]);
+
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="book-view-title" onClick={onClose}>
       <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
@@ -37,8 +52,9 @@ const BookView: React.FC<BookViewProps> = ({ book, isOpen, onClose, onRent, onDe
             </div>
           )}
           <p><strong>Autor:</strong> {book.author}</p>
-          <p><strong>Rok wydania:</strong> {book.year}</p>
+          <p><strong>Rok wydania:</strong> {book.year}</p> 
           <p><strong>Gatunek:</strong> {book.genre}</p>
+          <p><strong>Właściciel:</strong> {ownerName}</p>
           {book.rating && <p><strong>Ocena:</strong> {book.rating}/5</p>}
           {book.description && <p style={{ marginTop: 8 }}>{book.description}</p>}
         </div>

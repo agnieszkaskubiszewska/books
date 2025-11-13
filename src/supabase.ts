@@ -158,3 +158,14 @@ export async function getOrCreateThread(params: {
   if (insErr) throw new Error(insErr.message);
   return created!.id as string;
 }
+
+export async function getOwnerName(ownerId: string): Promise<string> {
+  const { data, error } = await supabase
+    .from('users')
+  .select('first_name, last_name')
+    .eq('id', ownerId)
+    .single();
+  if (error) throw new Error(error.message);
+  const full = [data?.first_name, data?.last_name].filter(Boolean).join(' ');
+  return full;
+}
