@@ -18,9 +18,6 @@ export const signInWithEmail = async (email: string, password: string) => {
     
     return data
   }
-//rejestracja
-// stara sygnatura:
-// export const signUpWithEmail = async (email: string, password: string) => { ... }
 
 export const signUpWithEmail = async (
   email: string,
@@ -81,7 +78,6 @@ export type DbMessage = {
 };
 
 export async function fetchMessagesForUser() {
-  // Tymczasowo selekcja bez RPC; jeśli masz RPC, dostosuj do thread_id
   const { data, error } = await supabase
     .from('messages')
     .select('*')
@@ -135,7 +131,6 @@ export async function getOrCreateThread(params: {
   const ownerId = (book as any).owner_id as string;
   const otherUserId = currentUserId === ownerId ? recipientId : currentUserId;
 
-  // Guard: nie pozwalaj tworzyć wątku z samym sobą (owner == other)
   if (ownerId === otherUserId) {
     throw new Error('Nie możesz rozpocząć rozmowy ze sobą (właściciel książki).');
   }
