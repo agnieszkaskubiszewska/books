@@ -17,7 +17,7 @@ genre: '' as Genre,
     description: '',
     image: null as File | null,
     available: false as boolean,
-    rentMode: 'local' as 'local' | 'shipping',
+    rentMode: 'local' as 'local',
     rentRegion: '' as string,
   });
 
@@ -98,7 +98,7 @@ genre: '' as Genre,
       image: imagePreview || undefined,
       rent: formData.available,
       rentMode: formData.available ? formData.rentMode : undefined,
-      rentRegion: formData.available && formData.rentMode === 'shipping' ? formData.rentRegion : undefined,
+      rentRegion: formData.available && formData.rentRegion ? formData.rentRegion : undefined,
     };
 
     onAddBook(bookData);
@@ -113,7 +113,7 @@ genre: '' as Genre,
       description: '',
       image: null,
       available: false as boolean,
-      rentMode: 'local' as 'local' | 'shipping',
+      rentMode: 'local' as 'local',
       rentRegion: '' as string,
     });
     setImagePreview(null);
@@ -228,17 +228,6 @@ placeholder="Why you love or hate this book. Spill the tea."
   <div className="form-group">
     <div className="loan-mode">
       <div className="switch-row">
-        <span style={{ fontFamily: 'Spectral, serif' }}>Only local loan</span>
-        <label className="switch" htmlFor="rentLocal">
-          <input
-            id="rentLocal"
-            name="rentLocal"
-            type="checkbox"
-            checked={formData.rentMode === 'local'}
-            onChange={() => setFormData(prev => ({ ...prev, rentMode: 'local' }))}
-          />
-          <span className="switch-track"><span className="switch-thumb" /></span>
-        </label>
         {formData.rentMode === 'local' && (
       <div style={{ marginTop: 12 }}>
         <label style={{ fontFamily: 'Spectral, serif' }}>Region (Poland):</label>
@@ -249,19 +238,6 @@ placeholder="Why you love or hate this book. Spill the tea."
         />
       </div>
     )}
-      </div>
-      <div className="switch-row" style={{ marginTop: 8 }}>
-        <span style={{ fontFamily: 'Spectral, serif' }}>Shipping</span>
-        <label className="switch" htmlFor="rentShipping">
-          <input
-            id="rentShipping"
-            name="rentShipping"
-            type="checkbox"
-            checked={formData.rentMode === 'shipping'}
-            onChange={() => setFormData(prev => ({ ...prev, rentMode: 'shipping' }))}
-          />
-          <span className="switch-track"><span className="switch-thumb" /></span>
-        </label>
       </div>
     </div>
   </div>
