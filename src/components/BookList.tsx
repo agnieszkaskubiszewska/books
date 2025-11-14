@@ -125,7 +125,7 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
         }
         const { data, error } = await supabase
           .from('users')
-          .select('id, first_name, last_name, email')
+          .select('id, first_name, last_name')
           .in('id', ownerIds);
         if (error) {
           console.error('Error fetching owners:', error);
