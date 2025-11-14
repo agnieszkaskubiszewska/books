@@ -54,7 +54,6 @@ const BookList: React.FC<BookListProps> = ({ books, onDeleteBook, isLoggedIn, on
     return '⭐'.repeat(rating);
   };
 
-
   const initialRent = (() => {
     const r = searchParams.get('rent');
     return r === 'rentable' || r === 'not_rentable' ? (r as 'rentable' | 'not_rentable') : 'all';
@@ -72,6 +71,7 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
   const navigate = useNavigate();
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const modalAnchorRef = useRef<HTMLDivElement | null>(null);
+  const [ownerNames, setOwnerNames] = useState<Record<string, string>>({});
 
   const filteredBooks = useMemo(() => {
     return books.filter(book => {
@@ -109,6 +109,42 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
     // no-op: przewijamy przed otwarciem modalu w handlerze kliknięcia
   }, [selectedBook]);
     
+  useEffect(() => {
+    (async () => {
+      try {
+        const ownerIds = Array.from(
+          new Set(
+            (books || [])
+              .map(b => b.ownerId)
+              .filter((id): id is string => !!id)
+          )
+        );
+        if (ownerIds.length === 0) {
+          setOwnerNames({});
+          return;
+        }
+        const { data, error } = await supabase
+          .from('users')
+          .select('id, first_name, last_name')
+          .in('id', ownerIds);
+        if (error) {
+          console.error('Error fetching owners:', error);
+          setOwnerNames({});
+          return;
+        }
+        const map: Record<string, string> = {};
+        (data || []).forEach((u: any) => {
+          const full = [u.first_name, u.last_name].filter(Boolean).join(' ');
+          map[String(u.id)] = full;
+        });
+        setOwnerNames(map);
+      } catch (e) {
+        console.error('Unexpected error fetching owners:', e);
+        setOwnerNames({});
+      }
+    })();
+  }, [books]);
+
 
   if (books.length === 0) {
     return (
@@ -248,6 +284,7 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
               <p><strong>Author:</strong> {book.author}</p>
               <p><strong>Year of publication:</strong> {book.year}</p>
               <p><strong>Genre:</strong> {getGenreName(book.genre)}</p>
+              <p><strong>Owner:</strong> {book.ownerId ? ownerNames[book.ownerId] : ''}</p>
               {book.rating && (
                 <p><strong>Rating:</strong> {renderStars(book.rating)} ({book.rating}/5)</p>
               )}
