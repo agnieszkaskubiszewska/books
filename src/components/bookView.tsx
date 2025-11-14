@@ -55,6 +55,9 @@ const BookView: React.FC<BookViewProps> = ({ book, isOpen, onClose, onRent, onDe
           <p><strong>Rok wydania:</strong> {book.year}</p> 
           <p><strong>Gatunek:</strong> {book.genre}</p>
           <p><strong>Właściciel:</strong> {ownerName}</p>
+          {book.rentRegion && (
+            <p><strong>Region:</strong> {book.rentRegion}</p>
+          )}
           {book.rating && <p><strong>Ocena:</strong> {book.rating}/5</p>}
           {book.description && <p style={{ marginTop: 8 }}>{book.description}</p>}
         </div>
