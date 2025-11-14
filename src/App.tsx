@@ -91,7 +91,7 @@ const AppContent: React.FC = () => {
       try {
         const { data, error } = await supabase
           .from('books')
-          .select('id,title,author,description,year,genre,rating,image,created_at,rent,rent_mode,rent_region,owner_id');
+          .select('id,title,author,description,year,genre,rating,image,created_at,rent,rent_region,owner_id');
 
         if (error) {
           console.error('Error fetching books:', error);
@@ -109,7 +109,6 @@ const AppContent: React.FC = () => {
           rating: row.rating ?? undefined,
           image: row.image ?? undefined,
           rent: !!row.rent,
-          rentMode: row.rent_mode ?? undefined,
           rentRegion: row.rent_region ?? undefined,
           ownerId: row.owner_id ?? undefined,
         }));
@@ -233,7 +232,6 @@ const AppContent: React.FC = () => {
           rating: book.rating ?? null,
           image: book.image ?? null,
           rent: book.rent ?? false,
-          rent_mode: book.rentMode ?? null,
           rent_region: book.rentRegion ?? null,
           owner_id: (await supabase.auth.getUser()).data.user?.id ?? null,
         }])
@@ -255,7 +253,6 @@ const AppContent: React.FC = () => {
         rating: data.rating ?? undefined,
         image: data.image ?? undefined,
         rent: !!data.rent,
-        rentMode: data.rent_mode ?? undefined,
         rentRegion: data.rent_region ?? undefined,
         ownerId: data.owner_id ?? undefined,
       };

@@ -17,7 +17,6 @@ genre: '' as Genre,
     description: '',
     image: null as File | null,
     available: false as boolean,
-    rentMode: 'local' as 'local',
     rentRegion: '' as string,
   });
 
@@ -97,7 +96,6 @@ genre: '' as Genre,
       description: formData.description,
       image: imagePreview || undefined,
       rent: formData.available,
-      rentMode: formData.available ? formData.rentMode : undefined,
       rentRegion: formData.available && formData.rentRegion ? formData.rentRegion : undefined,
     };
 
@@ -113,7 +111,6 @@ genre: '' as Genre,
       description: '',
       image: null,
       available: false as boolean,
-      rentMode: 'local' as 'local',
       rentRegion: '' as string,
     });
     setImagePreview(null);
@@ -228,7 +225,7 @@ placeholder="Why you love or hate this book. Spill the tea."
   <div className="form-group">
     <div className="loan-mode">
       <div className="switch-row">
-        {formData.rentMode === 'local' && (
+        {formData.available && (
       <div style={{ marginTop: 12 }}>
         <label style={{ fontFamily: 'Spectral, serif' }}>Region (Poland):</label>
         <GenreSelect
