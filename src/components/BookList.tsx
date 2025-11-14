@@ -284,7 +284,7 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
               <p><strong>Author:</strong> {book.author}</p>
               <p><strong>Year of publication:</strong> {book.year}</p>
               <p><strong>Genre:</strong> {getGenreName(book.genre)}</p>
-              <p><strong>Owner:</strong> {book.ownerId ? (ownerNames[book.ownerId] || '') : ''}</p>
+              <p><strong>Owner:</strong> {book.ownerId ? ownerNames[book.ownerId] : ''}</p>
               {book.rating && (
                 <p><strong>Rating:</strong> {renderStars(book.rating)} ({book.rating}/5)</p>
               )}
