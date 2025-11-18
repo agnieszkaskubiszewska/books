@@ -1,0 +1,1 @@
+alter table public.messages drop column if exists book_id cascade;
