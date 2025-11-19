@@ -412,6 +412,17 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
       if (!bookId) { showNotification('Brak powiązania z książką.', 'error'); return; }
       await sbAgreeOnRent(bookId);
       setBooks(prev => prev.map(b => (b.id === bookId ? { ...b, rent: false } : b)));
+      // Wyślij systemową wiadomość w tym samym wątku
+      if (currentUserId) {
+        const threadMsgs = dbMessages.filter(m => (m.thread_id ?? m.id) === threadId);
+        const participants = Array.from(new Set(threadMsgs.flatMap(m => [m.sender_id, m.recipient_id]).filter(Boolean))) as string[];
+        const otherUser = participants.find(id => id !== currentUserId) || null;
+        if (otherUser) {
+          const systemBody = '!system: Owner agreed to rent this book.';
+          const inserted = await sbSendMessage({ senderId: currentUserId, recipientId: otherUser, body: systemBody, threadId });
+          if (inserted) setDbMessages(prev => [inserted, ...prev]);
+        }
+      }
       showNotification('You agreed on rent. Book is now not available.', 'success');
     } catch (e: any) {
       console.error('agreeOnRent error:', e);
@@ -462,6 +473,8 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
               );
               const head = sortedAsc[0];
               const threadKey = head.thread_id ?? head.id;
+              const bookId = threadBookIds[threadKey];
+              const bookRent = bookId ? (books.find(b => b.id === bookId)?.rent ?? false) : false;
               return {
                 id: head.id,
                 senderName: (head as any).sender_email ? (head as any).sender_email.split('@')[0] : 'User',
@@ -470,9 +483,10 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
                 read: head.read,
                 bookTitle: threadTitles[threadKey],
                 ownerName: threadOwners[threadKey],
-                bookId: threadBookIds[threadKey],
+                bookId,
                 isOwner: threadOwnerIds[threadKey] === currentUserId,
                 threadId: threadKey,
+                canAgree: (threadOwnerIds[threadKey] === currentUserId) && !!bookRent,
                 replies: sortedAsc.slice(1).map(r => ({
                   id: r.id,
                   text: r.body,

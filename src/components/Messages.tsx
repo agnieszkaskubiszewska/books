@@ -11,6 +11,7 @@ type MessageItem = {
   ownerName?: string;
   bookId?: string;
   isOwner?: boolean;
+  canAgree?: boolean;
   read: boolean;
   replies?: { id: string; text: string; time: string; senderName: string; isMine?: boolean; read?: boolean; toMe?: boolean }[];
 };
@@ -93,6 +94,8 @@ chat with owner {m.ownerName} about book: {m.bookTitle}
                   <button
                     className="btn btn--ghost"
                     onClick={(e) => { e.stopPropagation(); onAgreeRent((m as any).threadId); }}
+                    disabled={!m.canAgree}
+                    style={m.canAgree ? undefined : { opacity: 0.6, cursor: 'not-allowed' }}
                   >
                     Agree on rent
                   </button>
@@ -109,6 +112,22 @@ chat with owner {m.ownerName} about book: {m.bookTitle}
                 {m.replies && m.replies.length > 0 && (
                   <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {m.replies.map(r => {
+                      const isSystem = typeof r.text === 'string' && r.text.startsWith('!system:');
+                      if (isSystem) {
+                        const content = r.text.replace(/^!system:\s*/,'');
+                        return (
+                          <div key={r.id} style={{
+                            borderRadius: 12,
+                            padding: 10,
+                            border: '1px solid #ef4444',
+                            background: '#fee2e2',
+                            color: '#991b1b'
+                          }}>
+                            <strong style={{ display: 'block', marginBottom: 4 }}>System</strong>
+                            <div>{content}</div>
+                          </div>
+                        );
+                      }
                       const bubbleBase = {
                         borderRadius: 12,
                         padding: 10,
