@@ -11,7 +11,7 @@ import LoginPage from './components/LoginPage';
 import Messages from './components/Messages';
 import { Book, Section, Genre } from './types';
 import { supabase } from './supabase';
-import { fetchMessagesForUser,getOrCreateThread as sbGetOrCreateThread, sendMessage as sbSendMessage, markMessageRead as sbMarkMessageRead, type DbMessage } from './supabase';
+import { fetchMessagesForUser,getOrCreateThread as sbGetOrCreateThread, sendMessage as sbSendMessage, markMessageRead as sbMarkMessageRead, agreeOnRent as sbAgreeOnRent, type DbMessage } from './supabase';
 
 const AppContent: React.FC = () => {
   const navigate = useNavigate();
@@ -27,6 +27,8 @@ const AppContent: React.FC = () => {
   const [dbMessages, setDbMessages] = useState<DbMessage[]>([]);
   const [threadTitles, setThreadTitles] = useState<Record<string, string>>({});
   const [threadOwners, setThreadOwners] = useState<Record<string, string>>({});
+  const [threadOwnerIds, setThreadOwnerIds] = useState<Record<string, string>>({});
+  const [threadBookIds, setThreadBookIds] = useState<Record<string, string>>({});
   const unreadCount = dbMessages
   .filter((m): m is DbMessage => !!m)
   .filter(m => !m.read && m.recipient_id === currentUserId).length;
@@ -200,14 +202,20 @@ const AppContent: React.FC = () => {
         );
         const mapThreadToTitle: Record<string, string> = {};
         const mapThreadToOwner: Record<string, string> = {};
+        const mapThreadToOwnerId: Record<string, string> = {};
+        const mapThreadToBookId: Record<string, string> = {};
         (threads || []).forEach((t: any) => {
           const title = bookIdToTitle.get(String(t.book_id));
           if (title) mapThreadToTitle[String(t.id)] = title;
+          mapThreadToBookId[String(t.id)] = String(t.book_id);
           const ownerName = userIdToName.get(String(t.owner_id));
           if (ownerName) mapThreadToOwner[String(t.id)] = ownerName;
+          mapThreadToOwnerId[String(t.id)] = String(t.owner_id);
         });
         setThreadTitles(mapThreadToTitle);
         setThreadOwners(mapThreadToOwner);
+        setThreadOwnerIds(mapThreadToOwnerId);
+        setThreadBookIds(mapThreadToBookId);
       } catch (err) {
         console.error('Error resolving thread titles:', err);
       }
@@ -397,6 +405,20 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
     }
   };
 
+  const agreeOnRent = async (threadId?: string | null) => {
+    try {
+      if (!threadId) return;
+      const bookId = threadBookIds[threadId];
+      if (!bookId) { showNotification('Brak powiązania z książką.', 'error'); return; }
+      await sbAgreeOnRent(bookId);
+      setBooks(prev => prev.map(b => (b.id === bookId ? { ...b, rent: false } : b)));
+      showNotification('You agreed on rent. Book is now not available.', 'success');
+    } catch (e: any) {
+      console.error('agreeOnRent error:', e);
+      showNotification(e?.message ?? 'Failed to agree on rent', 'error');
+    }
+  };
+
   // Loading screen
   if (isLoading) {
     return (
@@ -439,14 +461,18 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
                 (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
               );
               const head = sortedAsc[0];
+              const threadKey = head.thread_id ?? head.id;
               return {
                 id: head.id,
                 senderName: (head as any).sender_email ? (head as any).sender_email.split('@')[0] : 'User',
                 time: new Date(head.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                 body: head.body,
                 read: head.read,
-                bookTitle: head.thread_id ? threadTitles[head.thread_id] : undefined,
-                ownerName: head.thread_id ? threadOwners[head.thread_id] : undefined,
+                bookTitle: threadTitles[threadKey],
+                ownerName: threadOwners[threadKey],
+                bookId: threadBookIds[threadKey],
+                isOwner: threadOwnerIds[threadKey] === currentUserId,
+                threadId: threadKey,
                 replies: sortedAsc.slice(1).map(r => ({
                   id: r.id,
                   text: r.body,
@@ -461,6 +487,7 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
               onMarkRead={markMessageRead}
               onSendReply={sendReply}
               onStartThread={startThread}
+              onAgreeRent={(threadId?: string | null) => agreeOnRent(threadId)}
             />
           ) : (<Navigate to="/login" />)} />
           <Route path="/about" element={<About />} />

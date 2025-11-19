@@ -286,7 +286,12 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
               <p><strong>Genre:</strong> {getGenreName(book.genre)}</p>
               <p><strong>Owner:</strong> {book.ownerId ? ownerNames[book.ownerId] : ''}</p>
               {book.rentRegion && (
-                <p><strong>Region:</strong> {book.rentRegion}</p>
+            <p><strong>Rent Region:</strong> {book.rentRegion}</p>
+              )}
+              {!book.rent && (
+                <p style={{ color: '#b91c1c', fontWeight: 700 }}>
+                  Book is currently rented
+                </p>
               )}
               {book.rating && (
                 <p><strong>Rating:</strong> {renderStars(book.rating)} ({book.rating}/5)</p>

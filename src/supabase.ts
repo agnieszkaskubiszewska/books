@@ -154,6 +154,15 @@ export async function getOrCreateThread(params: {
   return created!.id as string;
 }
 
+export async function agreeOnRent(bookId: string) {
+  const { error } = await supabase
+    .from('books')
+    .update({ rent: false })
+    .eq('id', bookId);
+  if (error) throw new Error(error.message);
+  return true;
+}
+
 export async function getOwnerName(ownerId: string): Promise<string> {
   const { data, error } = await supabase
     .from('users')
