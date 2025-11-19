@@ -9,6 +9,8 @@ type MessageItem = {
   body: string;
   bookTitle?: string;
   ownerName?: string;
+  bookId?: string;
+  isOwner?: boolean;
   read: boolean;
   replies?: { id: string; text: string; time: string; senderName: string; isMine?: boolean; read?: boolean; toMe?: boolean }[];
 };
@@ -18,9 +20,10 @@ interface MessagesProps {
   onMarkRead: (id: string) => void;
   onSendReply: (id: string, text: string) => void;
   onStartThread: (recipientId: string, text: string, bookId?: string | null) => void;
+  onAgreeRent: (threadId?: string | null) => void;
 }
 
-const Messages: React.FC<MessagesProps> = ({ messages, onMarkRead, onSendReply, onStartThread }) => {
+const Messages: React.FC<MessagesProps> = ({ messages, onMarkRead, onSendReply, onStartThread, onAgreeRent }) => {
   const [openMessageId, setOpenMessageId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState<string>('');
   const [searchParams, setSearchParams] = useSearchParams();
@@ -83,6 +86,16 @@ useEffect(() => {
                   }}
                 >
 chat with owner {m.ownerName} about book: {m.bookTitle}
+                </div>
+              )}
+              {m.isOwner && m.bookId && (
+                <div style={{ alignSelf: 'flex-start' }}>
+                  <button
+                    className="btn btn--ghost"
+                    onClick={(e) => { e.stopPropagation(); onAgreeRent((m as any).threadId); }}
+                  >
+                    Agree on rent
+                  </button>
                 </div>
               )}
               <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
@@ -176,7 +189,6 @@ chat with owner {m.ownerName} about book: {m.bookTitle}
 >
   Cancel
 </button>
-
 <button
   className="btn"
   onClick={() => {
