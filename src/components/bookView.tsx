@@ -63,9 +63,6 @@ const BookView: React.FC<BookViewProps> = ({ book, isOpen, onClose, onRent, onDe
         </div>
         <div className="modal-footer">
           <div className="modal-actions">
-            {isLoggedIn && book.rent && (
-              <button type="button" className="modal-btn rent-a" onClick={() => onRent(book.id)}>Rent</button>
-            )}
             {isAdmin && (
               <button type="button" className="modal-btn delete-book-btn" onClick={() => onDelete(book.id)}>Delete</button>
             )}
