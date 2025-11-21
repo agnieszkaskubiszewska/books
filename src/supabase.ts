@@ -137,10 +137,11 @@ export async function getOrCreateThread(params: {
 
   const { data: existing, error: selErr } = await supabase
     .from('threads')
-    .select('id')
+    .select('id, is_closed')
     .eq('book_id', bookId)
     .eq('owner_id', ownerId)
     .eq('other_user_id', otherUserId)
+    .eq('is_closed', false)
     .maybeSingle();
   if (selErr && selErr.code !== 'PGRST116') throw new Error(selErr.message);
   if (existing?.id) return existing.id as string;
@@ -163,6 +164,14 @@ export async function agreeOnRent(bookId: string) {
   return true;
 }
 
+export async function closeThread(threadId: string) {
+  const { error } = await supabase
+    .from('threads')
+    .update({ is_closed: true })
+    .eq('id', threadId);
+  if (error) throw new Error(error.message);
+  return true;
+}
 export async function getOwnerName(ownerId: string): Promise<string> {
   const { data, error } = await supabase
     .from('users')

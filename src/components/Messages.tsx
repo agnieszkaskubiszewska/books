@@ -12,6 +12,8 @@ type MessageItem = {
   bookId?: string;
   isOwner?: boolean;
   canAgree?: boolean;
+  disableDisagree?: boolean;
+  closed?: boolean;
   read: boolean;
   replies?: { id: string; text: string; time: string; senderName: string; isMine?: boolean; read?: boolean; toMe?: boolean }[];
 };
@@ -22,9 +24,11 @@ interface MessagesProps {
   onSendReply: (id: string, text: string) => void;
   onStartThread: (recipientId: string, text: string, bookId?: string | null) => void;
   onAgreeRent: (threadId?: string | null) => void;
+  onDisagreeRent: (threadId?: string | null) => void;
+  onCloseDiscussion: (threadId?: string | null) => void;
 }
 
-const Messages: React.FC<MessagesProps> = ({ messages, onMarkRead, onSendReply, onStartThread, onAgreeRent }) => {
+const Messages: React.FC<MessagesProps> = ({ messages, onMarkRead, onSendReply, onStartThread, onAgreeRent, onDisagreeRent, onCloseDiscussion }) => {
   const [openMessageId, setOpenMessageId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState<string>('');
   const [searchParams, setSearchParams] = useSearchParams();
@@ -90,17 +94,66 @@ chat with owner {m.ownerName} about book: {m.bookTitle}
                 </div>
               )}
               {m.isOwner && m.bookId && (
-                <div style={{ alignSelf: 'flex-start' }}>
-                  <button
-                    className="btn btn--ghost"
-                    onClick={(e) => { e.stopPropagation(); onAgreeRent((m as any).threadId); }}
-                    disabled={!m.canAgree}
-                    style={m.canAgree ? undefined : { opacity: 0.6, cursor: 'not-allowed' }}
-                  >
-                    Agree on rent
-                  </button>
+                <div style={{ alignSelf: 'flex-start', display: 'flex', gap: 8 }}>
+                  <div>
+                    <button
+                      className="btn"
+                      onClick={(e) => { e.stopPropagation(); onAgreeRent((m as any).threadId); }}
+                      disabled={!m.canAgree}
+                      style={{
+                        fontSize: 12,
+                        padding: '6px 10px',
+                        borderRadius: 8,
+                        border: '1px solid #34d399',
+                        background: '#d1fae5',
+                        color: '#065f46',
+                        opacity: m.canAgree ? 1 : 0.6,
+                        cursor: m.canAgree ? 'pointer' : 'not-allowed'
+                      }}
+                    >
+                      Agree on rent
+                    </button>
+                  </div>
+                  <div>
+                    <button
+                      className="btn"
+                      onClick={(e) => { e.stopPropagation(); onDisagreeRent((m as any).threadId); }}
+                      disabled={!!m.disableDisagree}
+                      style={{
+                        fontSize: 12,
+                        padding: '6px 10px',
+                        borderRadius: 8,
+                        border: '1px solid #fca5a5',
+                        background: '#fee2e2',
+                        color: '#991b1b',
+                        opacity: m.disableDisagree ? 0.6 : 1,
+                        cursor: m.disableDisagree ? 'not-allowed' : 'pointer'
+                      }}
+                    >
+                      Disagree
+                    </button>
+                  </div>
+                  {!m.closed && (
+                    <div>
+                      <button
+                        className="btn"
+                        onClick={(e) => { e.stopPropagation(); onCloseDiscussion((m as any).threadId); }}
+                        style={{
+                          fontSize: 12,
+                          padding: '6px 10px',
+                          borderRadius: 8,
+                          border: '1px solid #e5e7eb',
+                          background: '#ffffff',
+                          color: '#334155'
+                        }}
+                      >
+                        Close discussion
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
+
               <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                 <div className="message-avatar">{m.senderName.charAt(0).toUpperCase()}</div>
                 <div className="message-content">
@@ -157,7 +210,7 @@ chat with owner {m.ownerName} about book: {m.bookTitle}
                     })}
                   </div>
                 )}
-                  {openMessageId === m.id && (
+                  {openMessageId === m.id && !m.closed && (
                     <div style={{ marginTop: 12 }}>
                       <textarea
                         value={replyText}
