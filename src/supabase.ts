@@ -164,6 +164,28 @@ export async function agreeOnRent(bookId: string) {
   return true;
 }
 
+export async function createRent(params: {
+  bookId: string;
+  bookOwner: string;
+  borrower: string;
+  rentFrom: string | null;
+  rentTo: string | null;
+}) {
+  const { data, error } = await supabase
+    .from('rents')
+    .insert([{
+      book_id: params.bookId,
+      book_owner: params.bookOwner,
+      borrower: params.borrower,
+      rent_from: params.rentFrom ? new Date(params.rentFrom).toISOString() : new Date().toISOString(),
+      rent_to: params.rentTo ? new Date(params.rentTo).toISOString() : null,
+      finished: false
+    }])
+    .select('id')
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data?.id as string;
+}
 export async function closeThread(threadId: string) {
   const { error } = await supabase
     .from('threads')
