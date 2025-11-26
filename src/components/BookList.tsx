@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
+import dayjs from 'dayjs';
 import { supabase} from '../supabase';
 import { Book, Genre } from '../types';
 import { useSearchParams, useNavigate } from 'react-router-dom';
@@ -17,10 +18,11 @@ interface BookListProps {
   isLoggedIn: boolean;
   onRent: (id: string) => void;
   isAdmin?: boolean;
+  requestedRentDates?: Record<string, { from: string | null; to: string | null }>;
 }
 
 
-const BookList: React.FC<BookListProps> = ({ books, onDeleteBook, isLoggedIn, onRent, isAdmin }) => {
+const BookList: React.FC<BookListProps> = ({ books, onDeleteBook, isLoggedIn, onRent, isAdmin, requestedRentDates }) => {
   const getGenreName = (genre: Genre): string => {
     const genres: Record<Genre, string> = {
       'fantasy': 'Fantasy',
@@ -293,6 +295,12 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
                   Book is currently rented
                 </p>
               )}
+              {!book.rent && requestedRentDates && (
+                <p style={{ color: '#334155', fontWeight: 600 }}>
+                  Requested rent period: {requestedRentDates[book.id]?.from ? dayjs(requestedRentDates[book.id]?.from!).format('DD.MM.YYYY') : ''} - {requestedRentDates[book.id]?.to ? dayjs(requestedRentDates[book.id]?.to!).format('DD.MM.YYYY') : ''}
+                </p>
+              )}
+
               {book.rating && (
                 <p><strong>Rating:</strong> {renderStars(book.rating)} ({book.rating}/5)</p>
               )}

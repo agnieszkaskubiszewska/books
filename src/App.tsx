@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import Header from './components/Header';
 import BookList from './components/BookList';
@@ -11,7 +11,7 @@ import LoginPage from './components/LoginPage';
 import Messages from './components/Messages';
 import { Book, Section, Genre } from './types';
 import { supabase } from './supabase';
-import { fetchMessagesForUser,getOrCreateThread as sbGetOrCreateThread, sendMessage as sbSendMessage, markMessageRead as sbMarkMessageRead, agreeOnRent as sbAgreeOnRent, closeThread as sbCloseThread, type DbMessage } from './supabase';
+import { fetchMessagesForUser,getOrCreateThread as sbGetOrCreateThread, sendMessage as sbSendMessage, markMessageRead as sbMarkMessageRead, createRent as sbCreateRent, closeThread as sbCloseThread, type DbMessage } from './supabase';
 
 const AppContent: React.FC = () => {
   const navigate = useNavigate();
@@ -31,6 +31,7 @@ const AppContent: React.FC = () => {
   const [threadBookIds, setThreadBookIds] = useState<Record<string, string>>({});
   const [threadClosed, setThreadClosed] = useState<Record<string, boolean>>({});
   const [threadDecision, setThreadDecision] = useState<Record<string, 'agree' | 'disagree'>>({});
+  const [requestedRentDates, setRequestedRentDates] = useState<Record<string, { from: string | null; to: string | null }>>({});
   const unreadCount = dbMessages
   .filter((m): m is DbMessage => !!m)
   .filter(m => !m.read && m.recipient_id === currentUserId).length;
@@ -232,6 +233,15 @@ const AppContent: React.FC = () => {
     setTimeout(() => setNotification(null), 3000);
   };
 
+  const requestedRentDatesByBook = useMemo(() => {
+    const byBook: Record<string, { from: string | null; to: string | null }> = {};
+    for (const [threadId, period] of Object.entries(requestedRentDates)) {
+      const bId = threadBookIds[threadId];
+      if (bId) byBook[bId] = period;
+    }
+    return byBook;
+  }, [requestedRentDates, threadBookIds]);
+
   const addBook = async (book: Omit<Book, 'id'>) => {
     try {
       const { data, error } = await supabase
@@ -389,7 +399,7 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
   };
 
 
-  const startThread = async (recipientId: string, text: string, bookId?: string | null) => {
+  const startThread = async (recipientId: string, text: string, bookId?: string | null, rentFrom?: string | null, rentTo?: string | null) => {
     if (!text.trim() || !currentUserId) return;
     if (!bookId) { showNotification('Brak bookId dla nowej rozmowy.', 'error'); return; }
     try {
@@ -400,6 +410,31 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
         body: text,
         threadId
       });
+      // zapamiętaj proponowany okres wypożyczenia dla tego wątku
+      setRequestedRentDates(prev => ({ ...prev, [threadId]: { from: rentFrom ?? null, to: rentTo ?? null } }));
+      // wyślij dodatkową systemową wiadomość z proponowanymi datami dla właściciela
+      if ((rentFrom || rentTo)) {
+        const hasExisting = dbMessages.some(m => ((m.thread_id ?? m.id) === threadId) && typeof m.body === 'string' && m.body.startsWith('!system: Requested rent period'));
+        if (!hasExisting) {
+          const fromStr = rentFrom ? rentFrom.split('T')[0] : null;
+          const toStr = rentTo ? rentTo.split('T')[0] : null;
+          const periodText = fromStr && toStr
+            ? `from ${fromStr} to ${toStr}`
+            : (fromStr ? `from ${fromStr}` : (toStr ? `to ${toStr}` : ''));
+          if (periodText) {
+            const systemBody = `!system: Requested rent period ${periodText}.`;
+            const sysMsg = await sbSendMessage({
+              senderId: currentUserId,
+              recipientId,
+              body: systemBody,
+              threadId
+            });
+            if (sysMsg) {
+              setDbMessages(prev => [sysMsg, inserted, ...prev]);
+            }
+          }
+        }
+      }
       if (inserted) setDbMessages(prev => [inserted, ...prev]);
       else setDbMessages(await fetchMessagesForUser());
       showNotification('Message sent', 'success');
@@ -415,13 +450,29 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
       if (!threadId) return;
       const bookId = threadBookIds[threadId];
       if (!bookId) { showNotification('Brak powiązania z książką.', 'error'); return; }
-      await sbAgreeOnRent(bookId);
+      // wyznacz uczestników, właściciela i pożyczającego
+      const ownerId = threadOwnerIds[threadId];
+      if (!ownerId || ownerId !== currentUserId) {
+        showNotification('Tylko właściciel książki może zaakceptować wypożyczenie.', 'error');
+        return;
+      }
+      const threadMsgs = dbMessages.filter(m => (m.thread_id ?? m.id) === threadId);
+      const participants = Array.from(new Set(threadMsgs.flatMap(m => [m.sender_id, m.recipient_id]).filter(Boolean))) as string[];
+      const borrowerId = participants.find(id => id !== ownerId) || null;
+      if (!borrowerId) { showNotification('Nie udało się ustalić osoby wypożyczającej.', 'error'); return; }
+      const period = requestedRentDates[threadId] || { from: null, to: null };
+      await sbCreateRent({
+        bookId,
+        bookOwner: ownerId,
+        borrower: borrowerId,
+        rentFrom: period.from,
+        rentTo: period.to
+      });
+      // Optymistycznie ustaw stan książki jako niedostępny (trigger też to zrobi w DB)
       setBooks(prev => prev.map(b => (b.id === bookId ? { ...b, rent: false } : b)));
       setThreadDecision(prev => ({ ...prev, [threadId]: 'agree' }));
       // Wyślij systemową wiadomość w tym samym wątku
       if (currentUserId) {
-        const threadMsgs = dbMessages.filter(m => (m.thread_id ?? m.id) === threadId);
-        const participants = Array.from(new Set(threadMsgs.flatMap(m => [m.sender_id, m.recipient_id]).filter(Boolean))) as string[];
         const otherUser = participants.find(id => id !== currentUserId) || null;
         if (otherUser) {
           const systemBody = '!system: Owner agreed to rent this book.';
@@ -439,6 +490,10 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
   const disagreeOnRent = async (threadId?: string | null) => {
     try {
       if (!threadId) return;
+      if (threadDecision[threadId] === 'agree') {
+        showNotification('Rent already agreed. You can only close the discussion.', 'info');
+        return;
+      }
       if (currentUserId) {
         const threadMsgs = dbMessages.filter(m => (m.thread_id ?? m.id) === threadId);
         const participants = Array.from(new Set(threadMsgs.flatMap(m => [m.sender_id, m.recipient_id]).filter(Boolean))) as string[];
@@ -506,7 +561,16 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
           <Route path="/" element={<Welcome isLoggedIn={isLoggedIn} />} />
           <Route path="/login" element={<LoginPage onLogin={handleLogin} onBack={() => navigate('/')} />} />
           <Route path="/add-book" element={isLoggedIn ? <AddBookForm onAddBook={addBook} /> : <Navigate to="/login" />} />
-    <Route path="/books" element={<BookList books={books} onDeleteBook={deleteBook} isLoggedIn={isLoggedIn} onRent={rentBook} isAdmin={isAdmin} />} />
+    <Route path="/books" element={
+      <BookList
+        books={books}
+        onDeleteBook={deleteBook}
+        isLoggedIn={isLoggedIn}
+        onRent={rentBook}
+        isAdmin={isAdmin}
+        requestedRentDates={requestedRentDatesByBook}
+      />
+    } />
           <Route path="/messages" element={isLoggedIn ? (
             <Messages
             messages={Array.from(
@@ -523,12 +587,12 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
               const head = sortedAsc[0];
               const threadKey = head.thread_id ?? head.id;
               const bookId = threadBookIds[threadKey];
-              const bookRent = bookId ? (books.find(b => b.id === bookId)?.rent ?? false) : false;
               const decision = threadDecision[threadKey];
               const isOwner = threadOwnerIds[threadKey] === currentUserId;
               const closed = !!threadClosed[threadKey];
-              const disableAgree = !isOwner || !bookRent || decision === 'disagree' || closed;
-              const disableDisagree = !isOwner || decision === 'agree' || closed;
+              // Allow Agree by default unless explicitly disallowed by role/decision/closed
+              const disableAgree = !isOwner || decision != null || closed;
+              const disableDisagree = !isOwner || decision != null || closed;
               return {
                 id: head.id,
                 senderName: (head as any).sender_email ? (head as any).sender_email.split('@')[0] : 'User',

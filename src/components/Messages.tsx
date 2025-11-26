@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
 import { useSearchParams } from 'react-router-dom';
+import dayjs, { Dayjs } from 'dayjs';
+import Calendar from './Calendar';
+import SystemMemo from './SystemMemo';
 
 type MessageItem = {
   id: string;
@@ -22,7 +25,7 @@ interface MessagesProps {
   messages: MessageItem[];
   onMarkRead: (id: string) => void;
   onSendReply: (id: string, text: string) => void;
-  onStartThread: (recipientId: string, text: string, bookId?: string | null) => void;
+  onStartThread: (recipientId: string, text: string, bookId?: string | null, rentFrom?: string | null, rentTo?: string | null) => void;
   onAgreeRent: (threadId?: string | null) => void;
   onDisagreeRent: (threadId?: string | null) => void;
   onCloseDiscussion: (threadId?: string | null) => void;
@@ -34,6 +37,8 @@ const Messages: React.FC<MessagesProps> = ({ messages, onMarkRead, onSendReply, 
   const [searchParams, setSearchParams] = useSearchParams();
   
   const [bookTitle, setBookTitle] = useState<string | null>(null);
+  const [rentFrom, setRentFrom] = useState<Dayjs | null>(dayjs());
+  const [rentTo, setRentTo] = useState<Dayjs | null>(null);
 
 useEffect(() => {
   const id = searchParams.get('book');
@@ -114,25 +119,24 @@ chat with owner {m.ownerName} about book: {m.bookTitle}
                       Agree on rent
                     </button>
                   </div>
-                  <div>
-                    <button
-                      className="btn"
-                      onClick={(e) => { e.stopPropagation(); onDisagreeRent((m as any).threadId); }}
-                      disabled={!!m.disableDisagree}
-                      style={{
-                        fontSize: 12,
-                        padding: '6px 10px',
-                        borderRadius: 8,
-                        border: '1px solid #fca5a5',
-                        background: '#fee2e2',
-                        color: '#991b1b',
-                        opacity: m.disableDisagree ? 0.6 : 1,
-                        cursor: m.disableDisagree ? 'not-allowed' : 'pointer'
-                      }}
-                    >
-                      Disagree
-                    </button>
-                  </div>
+                  {!m.disableDisagree && (
+                    <div>
+                      <button
+                        className="btn"
+                        onClick={(e) => { e.stopPropagation(); onDisagreeRent((m as any).threadId); }}
+                        style={{
+                          fontSize: 12,
+                          padding: '6px 10px',
+                          borderRadius: 8,
+                          border: '1px solid #fca5a5',
+                          background: '#fee2e2',
+                          color: '#991b1b'
+                        }}
+                      >
+                        Disagree
+                      </button>
+                    </div>
+                  )}
                   {!m.closed && (
                     <div>
                       <button
@@ -167,19 +171,8 @@ chat with owner {m.ownerName} about book: {m.bookTitle}
                     {m.replies.map(r => {
                       const isSystem = typeof r.text === 'string' && r.text.startsWith('!system:');
                       if (isSystem) {
-                        const content = r.text.replace(/^!system:\s*/,'');
-                        return (
-                          <div key={r.id} style={{
-                            borderRadius: 12,
-                            padding: 10,
-                            border: '1px solid #ef4444',
-                            background: '#fee2e2',
-                            color: '#991b1b'
-                          }}>
-                            <strong style={{ display: 'block', marginBottom: 4 }}>System</strong>
-                            <div>{content}</div>
-                          </div>
-                        );
+                        const content = r.text.replace(/^!system:\s*/, '');
+                        return <SystemMemo key={r.id} content={content} />;
                       }
                       const bubbleBase = {
                         borderRadius: 12,
@@ -240,6 +233,22 @@ chat with owner {m.ownerName} about book: {m.bookTitle}
 <div className="message-about-book"> You want to rent book: <strong>{bookTitle}</strong></div>
                   )}
                 </div>
+                <div style={{ display: 'flex', gap: 12, marginTop: 12, flexWrap: 'wrap' }}>
+                  <div style={{ minWidth: 220 }}>
+                    <Calendar
+                      label="Rent from"
+                      value={rentFrom}
+                      onChange={(v) => setRentFrom(v)}
+                    />
+                  </div>
+                  <div style={{ minWidth: 220 }}>
+                    <Calendar
+                      label="Rent to"
+                      value={rentTo}
+                      onChange={(v) => setRentTo(v)}
+                    />
+                  </div>
+                </div>
                 <div style={{ marginTop: 12 }}>
                   <textarea
                     value={replyText}
@@ -253,6 +262,8 @@ chat with owner {m.ownerName} about book: {m.bookTitle}
   className="btn btn--ghost"
   onClick={() => {
     setReplyText('');
+    setRentFrom(dayjs());
+    setRentTo(null);
     const next = new URLSearchParams(searchParams);
     next.delete('to');
     next.delete('book');
@@ -267,8 +278,16 @@ chat with owner {m.ownerName} about book: {m.bookTitle}
     const to = searchParams.get('to');
     const bookId = searchParams.get('book');
     if (!to || !replyText.trim()) return;
-    onStartThread(to, replyText, bookId);
+    onStartThread(
+      to,
+      replyText,
+      bookId,
+      rentFrom ? rentFrom.toISOString() : null,
+      rentTo ? rentTo.toISOString() : null
+    );
     setReplyText('');
+    setRentFrom(dayjs());
+    setRentTo(null);
     const next = new URLSearchParams(searchParams);
     next.delete('to'); next.delete('book');
     setSearchParams(next, { replace: true });
