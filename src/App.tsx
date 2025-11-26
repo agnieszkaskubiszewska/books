@@ -32,6 +32,7 @@ const AppContent: React.FC = () => {
   const [threadClosed, setThreadClosed] = useState<Record<string, boolean>>({});
   const [threadDecision, setThreadDecision] = useState<Record<string, 'agree' | 'disagree'>>({});
   const [requestedRentDates, setRequestedRentDates] = useState<Record<string, { from: string | null; to: string | null }>>({});
+  const [userNames, setUserNames] = useState<Record<string, string>>({});
   const unreadCount = dbMessages
   .filter((m): m is DbMessage => !!m)
   .filter(m => !m.read && m.recipient_id === currentUserId).length;
@@ -224,6 +225,44 @@ const AppContent: React.FC = () => {
         setThreadClosed(mapThreadToClosed);
       } catch (err) {
         console.error('Error resolving thread titles:', err);
+      }
+    })();
+  }, [dbMessages]);
+
+  // Resolve display names for participants (first + last name or email local-part)
+  useEffect(() => {
+    (async () => {
+      try {
+        const ids = Array.from(
+          new Set(
+            (dbMessages || [])
+              .flatMap(m => [m.sender_id, m.recipient_id])
+              .filter((id): id is string => !!id)
+          )
+        );
+        if (ids.length === 0) {
+          setUserNames({});
+          return;
+        }
+        const { data, error } = await supabase
+          .from('users')
+          .select('id, first_name, last_name, email')
+          .in('id', ids);
+        if (error) {
+          console.error('Error fetching user names:', error);
+          return;
+        }
+        const nameMap: Record<string, string> = {};
+        (data || []).forEach((u: any) => {
+          const first = (u.first_name || '').trim();
+          const last = (u.last_name || '').trim();
+          const full = [first, last].filter(Boolean).join(' ').trim();
+          const fallback = (u.email || '').split('@')[0] || 'User';
+          nameMap[String(u.id)] = full || fallback || 'User';
+        });
+        setUserNames(nameMap);
+      } catch (err) {
+        console.error('Unexpected error resolving user names:', err);
       }
     })();
   }, [dbMessages]);
@@ -595,7 +634,7 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
               const disableDisagree = !isOwner || decision != null || closed;
               return {
                 id: head.id,
-                senderName: (head as any).sender_email ? (head as any).sender_email.split('@')[0] : 'User',
+                senderName: userNames[head.sender_id] || 'User',
                 time: new Date(head.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                 body: head.body,
                 read: head.read,
@@ -611,7 +650,7 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
                   id: r.id,
                   text: r.body,
                   time: new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                  senderName: (r as any).sender_email ? (r as any).sender_email.split('@')[0] : 'User',
+                  senderName: userNames[r.sender_id] || 'User',
                   isMine: r.sender_id === currentUserId,
                   read: r.read,
                   toMe: r.recipient_id === currentUserId

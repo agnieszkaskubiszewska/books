@@ -159,7 +159,14 @@ chat with owner {m.ownerName} about book: {m.bookTitle}
               )}
 
               <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                <div className="message-avatar">{m.senderName.charAt(0).toUpperCase()}</div>
+                <div className="message-avatar">
+                  {m.senderName
+                    .split(' ')
+                    .filter(Boolean)
+                    .slice(0, 2)
+                    .map(part => part.charAt(0).toUpperCase())
+                    .join('')}
+                </div>
                 <div className="message-content">
                 <div className="message-header">
                   <div className="message-sender">{m.senderName}</div>
