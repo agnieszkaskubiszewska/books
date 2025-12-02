@@ -33,6 +33,7 @@ const AppContent: React.FC = () => {
   const [threadDecision, setThreadDecision] = useState<Record<string, 'agree' | 'disagree'>>({});
   const [requestedRentDates, setRequestedRentDates] = useState<Record<string, { from: string | null; to: string | null }>>({});
   const [userNames, setUserNames] = useState<Record<string, string>>({});
+  const [activeRentDatesByBook, setActiveRentDatesByBook] = useState<Record<string, { from: string | null; to: string | null }>>({});
   const unreadCount = dbMessages
   .filter((m): m is DbMessage => !!m)
   .filter(m => !m.read && m.recipient_id === currentUserId).length;
@@ -229,6 +230,33 @@ const AppContent: React.FC = () => {
     })();
   }, [dbMessages]);
 
+  // Fetch active rents (finished = false) and map by book_id -> { from, to }
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('rents')
+          .select('book_id, rent_from, rent_to, finished')
+          .eq('finished', false);
+        if (error) {
+          console.error('Error fetching active rents:', error);
+          return;
+        }
+        const byBook: Record<string, { from: string | null; to: string | null }> = {};
+        (data || []).forEach((r: any) => {
+          const bId = String(r.book_id);
+          byBook[bId] = {
+            from: r.rent_from ?? null,
+            to: r.rent_to ?? null
+          };
+        });
+        setActiveRentDatesByBook(byBook);
+      } catch (err) {
+        console.error('Unexpected error fetching rents:', err);
+      }
+    })();
+  }, [books, dbMessages]);
+
   // Resolve display names for participants (first + last name or email local-part)
   useEffect(() => {
     (async () => {
@@ -272,14 +300,15 @@ const AppContent: React.FC = () => {
     setTimeout(() => setNotification(null), 3000);
   };
 
-  const requestedRentDatesByBook = useMemo(() => {
-    const byBook: Record<string, { from: string | null; to: string | null }> = {};
+  const requestedRentDatesMergedByBook = useMemo(() => {
+    // scal: najpierw aktywne z DB, potem dorzuć lokalne propozycje powiązane z wątkami (jeśli brak w DB)
+    const merged: Record<string, { from: string | null; to: string | null }> = { ...activeRentDatesByBook };
     for (const [threadId, period] of Object.entries(requestedRentDates)) {
       const bId = threadBookIds[threadId];
-      if (bId) byBook[bId] = period;
+      if (bId && !merged[bId]) merged[bId] = { from: period.from ?? null, to: period.to ?? null };
     }
-    return byBook;
-  }, [requestedRentDates, threadBookIds]);
+    return merged;
+  }, [activeRentDatesByBook, requestedRentDates, threadBookIds]);
 
   const addBook = async (book: Omit<Book, 'id'>) => {
     try {
@@ -507,6 +536,11 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
         rentFrom: period.from,
         rentTo: period.to
       });
+      // zapamiętaj aktywny okres także lokalnie (dla BookList po akceptacji)
+      setActiveRentDatesByBook(prev => ({
+        ...prev,
+        [bookId]: { from: period.from ?? new Date().toISOString(), to: period.to ?? null }
+      }));
       // Optymistycznie ustaw stan książki jako niedostępny (trigger też to zrobi w DB)
       setBooks(prev => prev.map(b => (b.id === bookId ? { ...b, rent: false } : b)));
       setThreadDecision(prev => ({ ...prev, [threadId]: 'agree' }));
@@ -607,7 +641,7 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
         isLoggedIn={isLoggedIn}
         onRent={rentBook}
         isAdmin={isAdmin}
-        requestedRentDates={requestedRentDatesByBook}
+        requestedRentDates={requestedRentDatesMergedByBook}
       />
     } />
           <Route path="/messages" element={isLoggedIn ? (
