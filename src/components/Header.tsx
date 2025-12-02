@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Section } from '../types';
 
@@ -17,6 +17,8 @@ const Header: React.FC<HeaderProps> = ({ currentSection, onSectionChange, user, 
   const [isMessagesMenuOpen, setIsMessagesMenuOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const menuRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
   const initials = React.useMemo(() => {
     if (!user) return '';
@@ -49,6 +51,25 @@ const Header: React.FC<HeaderProps> = ({ currentSection, onSectionChange, user, 
     setIsUserMenuOpen(false);
   };
 
+  // Zamknij dropdowny po kliknięciu poza nimi
+  useEffect(() => {
+    const onOutside = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as Node;
+      if (isMenuOpen && menuRef.current && !menuRef.current.contains(target)) {
+        setIsMenuOpen(false);
+      }
+      if (isUserMenuOpen && userMenuRef.current && !userMenuRef.current.contains(target)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onOutside);
+    document.addEventListener('touchstart', onOutside, { passive: true });
+    return () => {
+      document.removeEventListener('mousedown', onOutside);
+      document.removeEventListener('touchstart', onOutside);
+    };
+  }, [isMenuOpen, isUserMenuOpen]);
+
 const handleSectionClick = (section: Section) => {
     onSectionChange(section);
     setIsMenuOpen(false);
@@ -80,7 +101,7 @@ const handleSectionClick = (section: Section) => {
   return (
     <header className="header">
       <div className="container">
-        <div className="menu">
+        <div className="menu" ref={menuRef}>
           <button 
             className={`menu-btn ${isMenuOpen ? 'active' : ''}`}
             onClick={handleMenuClick}
@@ -128,7 +149,7 @@ const handleSectionClick = (section: Section) => {
           </div>
         </div>
         
-        <div className="user-profile">
+        <div className="user-profile" ref={userMenuRef}>
           {isLoggedIn && (
             <div className="user-bell">
               <button className="user-bell-btn" onClick={handleMessagesMenuClick} aria-label="Messages">
