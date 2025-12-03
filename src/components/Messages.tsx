@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import dayjs, { Dayjs } from 'dayjs';
 import Calendar from './Calendar';
 import SystemMemo from './SystemMemo';
+import FinishedRent from './FinishedRent';
 
 type MessageItem = {
   id: string;
@@ -52,6 +53,7 @@ useEffect(() => {
     setBookTitle(!error ? data?.title ?? null : null);
   })();
 }, [searchParams]);
+
 
   useEffect(() => {
     const to = searchParams.get('to');
@@ -156,6 +158,16 @@ chat with owner {m.ownerName} about book: {m.bookTitle}
                     </div>
                   )}
                 </div>
+              )}
+              {m.isOwner && m.bookId && (m as any).isAgreed && (m as any).hasActiveRent && !localStorage.getItem(`return_check_done_${(m as any).threadId}`) && (
+                <FinishedRent
+                  bookId={m.bookId}
+                  onDone={() => {
+                    try {
+                      localStorage.setItem(`return_check_done_${(m as any).threadId}`, '1');
+                    } catch {}
+                  }}
+                />
               )}
 
               <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>

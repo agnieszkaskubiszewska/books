@@ -22,7 +22,7 @@ genre: '' as Genre,
 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
-  const genreOptions = [
+ const genreOptions = [
     { value: 'fantasy' as Genre, label: 'Fantasy' },
     { value: 'thriller' as Genre, label: 'Thriller' },
     { value: 'romance' as Genre, label: 'Romans' },
