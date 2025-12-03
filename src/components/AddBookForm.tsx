@@ -118,10 +118,10 @@ genre: '' as Genre,
 
   return (
     <div className="add-book-form">
-      <h2 style={{ fontFamily: 'Spectral, serif' }}>Add new book</h2>
+      <h2 style={{ fontFamily: 'Spectral, serif' }}>Dodaj nową książkę</h2>
       <form onSubmit={handleSubmit} className="book-form">
         <div className="form-group">
-          <label htmlFor="title" style={{ fontFamily: 'Spectral, serif' }}>Title:</label>
+          <label htmlFor="title" style={{ fontFamily: 'Spectral, serif' }}>Tytuł:</label>
           <input
             type="text"
             id="title"
@@ -133,7 +133,7 @@ genre: '' as Genre,
         </div>
 
         <div className="form-group">
-          <label htmlFor="author" style={{ fontFamily: 'Spectral, serif' }}>Author:</label>
+          <label htmlFor="author" style={{ fontFamily: 'Spectral, serif' }}>Autor:</label>
           <input
             type="text"
             id="author"
@@ -145,7 +145,7 @@ genre: '' as Genre,
         </div>
 
         <div className="form-group">
-          <label htmlFor="year" style={{ fontFamily: 'Spectral, serif' }}>Year:</label>
+          <label htmlFor="year" style={{ fontFamily: 'Spectral, serif' }}>Rok:</label>
           <input
             type="number"
             id="year"
@@ -159,7 +159,7 @@ genre: '' as Genre,
         </div>
 
         <div className="form-group">
-          <label className="dropdown-label" htmlFor="genre" style={{ fontFamily: 'Spectral, serif' }}>Genre:</label>
+          <label className="dropdown-label" htmlFor="genre" style={{ fontFamily: 'Spectral, serif' }}>Gatunek:</label>
           <GenreSelect
             value={formData.genre}
             onChange={(g) => setFormData(p => ({ ...p, genre: g }))}
@@ -168,7 +168,7 @@ genre: '' as Genre,
         </div>
 
         <div className="form-group">
-          <label style={{ fontFamily: 'Spectral, serif' }}>Rating:</label>
+          <label style={{ fontFamily: 'Spectral, serif' }}>Ocena:</label>
           <div className="rating-table">
             {[1, 2, 3, 4, 5].map((i) => (
               <label
@@ -197,7 +197,7 @@ genre: '' as Genre,
         </div>
 
         <div className="form-group">
-      <label htmlFor="description" style={{ fontFamily: 'Spectral, serif' }}>Description:</label>
+      <label htmlFor="description" style={{ fontFamily: 'Spectral, serif' }}>Opis:</label>
           <textarea 
             style={{ fontFamily: 'Spectral, serif' }}
             id="description"
@@ -205,11 +205,11 @@ genre: '' as Genre,
             value={formData.description}
             onChange={handleInputChange}
             rows={4}
-placeholder="Why you love or hate this book. Spill the tea."
+placeholder="Dlaczego lubisz lub nienawisz tej książki. Opowiedz o swoim doświadczeniu."
           />
         </div>
         <div className="form-group">
-  <label htmlFor="available" style={{ fontFamily: 'Spectral, serif' }}>Available for loan:</label>
+  <label htmlFor="available" style={{ fontFamily: 'Spectral, serif' }}>Dostępna do wypożyczenia:</label>
   <label className="switch" htmlFor="available">
     <input
       id="available"
@@ -227,7 +227,7 @@ placeholder="Why you love or hate this book. Spill the tea."
       <div className="switch-row">
         {formData.available && (
       <div style={{ marginTop: 12 }}>
-        <label style={{ fontFamily: 'Spectral, serif' }}>Region (Poland):</label>
+        <label style={{ fontFamily: 'Spectral, serif' }}>Region (Polska):</label>
         <GenreSelect
           value={formData.rentRegion}
           onChange={(r) => setFormData(p => ({ ...p, rentRegion: r }))}
@@ -241,7 +241,7 @@ placeholder="Why you love or hate this book. Spill the tea."
 )}
 
         <div className="form-group">
-          <label htmlFor="image" style={{ fontFamily: 'Spectral, serif' }}  >Book image:</label>
+          <label htmlFor="image" style={{ fontFamily: 'Spectral, serif' }}  >Zdjęcie książki:</label>
           <input
             type="file"
             id="image"
@@ -258,7 +258,7 @@ placeholder="Why you love or hate this book. Spill the tea."
 
         <div className="form-buttons">
           <button type="submit" className="submit-btn">
-            Add book
+            Dodaj książkę
           </button>
         </div>
       </form>

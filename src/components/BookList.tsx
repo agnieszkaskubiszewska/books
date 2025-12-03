@@ -151,15 +151,15 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
   if (books.length === 0) {
     return (
       <div className="book-list">
-        <h2>Books</h2>
-        <p>There are no books yet. Add the first book!</p>
+    <h2>Książki</h2>
+        <p>Brak książek. Dodaj pierwszą książkę!</p>
       </div>
     );
   }
 
   return (
     <div className="book-list">
-      <h2>Books</h2>
+      <h2>Książki</h2>
       <div ref={modalAnchorRef} />
       <div className="filters-toolbar">
         <div className="filters-actions">
@@ -193,14 +193,14 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
             className="btn btn--ghost filters-reset"
             onClick={() => { setRentFilter('all'); setRatingSort('none'); setIsFilterOpen(false); setIsSortOpen(false); }}
           >
-            Reset filters
+            Resetuj filtry
           </button>
         </div>
 
         {isFilterOpen && (
           <div className="filters-panel">
             <div className="filter-group compact">
-              <span className="filter-label">Filter:</span>
+              <span className="filter-label">Filtr:</span>
               <div className="toggle-group" role="tablist" aria-label="Filter availability">
                 <button
                   type="button"
@@ -208,7 +208,7 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
                   aria-pressed={rentFilter === 'all'}
                   onClick={() => setRentFilter('all')}
                 >
-                  All
+                  Wszystkie
                 </button>
                 <button
                   type="button"
@@ -216,7 +216,7 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
                   aria-pressed={rentFilter === 'rentable'}
                   onClick={() => setRentFilter('rentable')}
                 >
-                  Available
+                  Dostępne
                 </button>
                 <button
                   type="button"
@@ -224,7 +224,7 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
                   aria-pressed={rentFilter === 'not_rentable'}
                   onClick={() => setRentFilter('not_rentable')}
                 >
-                  Not available
+                  Wypożyczane
                 </button>
               </div>
             </div>
@@ -234,7 +234,7 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
         {isSortOpen && (
           <div className="filters-panel">
             <div className="filter-group compact">
-      <span className="filter-label">Rated:</span>
+      <span className="filter-label">Ocena:</span>
             <div className="toggle-group" role="tablist" aria-label="Sort by rating">
                 <button
                   type="button"
@@ -242,7 +242,7 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
                   aria-pressed={ratingSort === 'none'}
                   onClick={() => setRatingSort('none')}
                 >
-                  None
+                  Brak
                 </button>
                 <button
                   type="button"
@@ -250,7 +250,7 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
                   aria-pressed={ratingSort === 'best'}
                   onClick={() => setRatingSort('best')}
                 >
-                  Best
+                  Najlepsze
                 </button>
                 <button
                   type="button"
@@ -258,7 +258,7 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
                   aria-pressed={ratingSort === 'worst'}
                   onClick={() => setRatingSort('worst')}
                 >
-                  Worst
+                  Najgorsze
                 </button>
               </div>
             </div>
@@ -267,7 +267,7 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
       </div>
       <div className="books-mosaic">
         {visibleBooks.length === 0 ? (
-          <p>No books found for the selected filters.</p>
+          <p>Brak książek dla wybranych filtrów.</p>
         ) : (
           visibleBooks.map(book => (
             <div key={book.id} className="book-item" onClick={() => {
@@ -283,29 +283,29 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
                 </div>
               )}
               <h3>{book.title}</h3>
-              <p><strong>Author:</strong> {book.author}</p>
-              <p><strong>Year of publication:</strong> {book.year}</p>
-              <p><strong>Genre:</strong> {getGenreName(book.genre)}</p>
-              <p><strong>Owner:</strong> {book.ownerId ? ownerNames[book.ownerId] : ''}</p>
+              <p><strong>Autor:</strong> {book.author}</p>
+              <p><strong>Rok wydania:</strong> {book.year}</p>
+              <p><strong>Gatunek:</strong> {getGenreName(book.genre)}</p>
+              <p><strong>Właściciel:</strong> {book.ownerId ? ownerNames[book.ownerId] : ''}</p>
               {book.rentRegion && (
-            <p><strong>Rent Region:</strong> {book.rentRegion}</p>
+<p><strong>Gdzie wypożyczasz:</strong> {book.rentRegion}</p>
               )}
               {!book.rent && (
                 <p style={{ color: '#b91c1c', fontWeight: 700 }}>
-                  Book is currently rented
+                  Książka jest obecnie wypożyczona
                 </p>
               )}
               {!book.rent && requestedRentDates && (
                 <p style={{ color: '#334155', fontWeight: 600 }}>
-                  Requested rent period: {requestedRentDates[book.id]?.from ? dayjs(requestedRentDates[book.id]?.from!).format('DD.MM.YYYY') : ''} - {requestedRentDates[book.id]?.to ? dayjs(requestedRentDates[book.id]?.to!).format('DD.MM.YYYY') : ''}
+                  Proponowany okres wypożyczenia: {requestedRentDates[book.id]?.from ? dayjs(requestedRentDates[book.id]?.from!).format('DD.MM.YYYY') : ''} - {requestedRentDates[book.id]?.to ? dayjs(requestedRentDates[book.id]?.to!).format('DD.MM.YYYY') : ''}
                 </p>
               )}
 
               {book.rating && (
-                <p><strong>Rating:</strong> {renderStars(book.rating)} ({book.rating}/5)</p>
+                <p><strong>Ocena:</strong> {renderStars(book.rating)} ({book.rating}/5)</p>
               )}
               {book.description && (
-                <p><strong>Description:</strong> {book.description}</p>
+                <p><strong>Opis:</strong> {book.description}</p>
               )}
               {isLoggedIn && (
                 <>
@@ -321,12 +321,12 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
                         }
                       }}
                     >
-                      Rent
+                      Wypożycz
                     </button>
                   )}
                   {isAdmin && (
                     <button className="delete-book-btn" onClick={(e) => { e.stopPropagation(); onDeleteBook(book.id); }}>
-                    Delete book
+                    Usuń książkę
                     </button>
                   )}
                 </>
