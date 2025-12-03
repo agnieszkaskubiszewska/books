@@ -19,7 +19,7 @@ export function GenreSelect<T extends string>({
         onClick={() => setOpen(o=>!o)}
         className={selected ? '' : 'placeholder'}
       >
-        {selected?.label ?? 'Click to select genre'}
+{selected?.label ?? 'Kliknij by wybrać'}
       </button>
       {open && (
         <ul role="listbox">

@@ -51,7 +51,6 @@ const Header: React.FC<HeaderProps> = ({ currentSection, onSectionChange, user, 
     setIsUserMenuOpen(false);
   };
 
-  // Zamknij dropdowny po kliknięciu poza nimi
   useEffect(() => {
     const onOutside = (e: MouseEvent | TouchEvent) => {
       const target = e.target as Node;
@@ -124,27 +123,27 @@ const handleSectionClick = (section: Section) => {
                 className="dropdown-item"
                 onClick={() => handleSectionClick('main')}
               >
-                Add a book
+                  Dodaj książkę
               </button>
             )}
             <button 
               className="dropdown-item"
               onClick={() => handleSectionClick('books')}
             >
-              Books
+      Lista książek
             </button>
             
             <button 
               className="dropdown-item"
               onClick={() => handleSectionClick('about')}
             >
-              About
+              O nas
             </button>
             <button 
               className="dropdown-item"
               onClick={() => handleSectionClick('contact')}
             >
-              Contact
+              Kontakt
             </button>
           </div>
         </div>
@@ -191,13 +190,13 @@ const handleSectionClick = (section: Section) => {
                   <span className="user-email">{user.email}</span>
                 </div>
         <button className="user-menu-item" onClick={handleMessagesMenuClick}>
-                  Messages
+                  Wiadomości
                 </button>
             <button className="user-menu-item" onClick={() => {
                   onLogout();
                   setIsUserMenuOpen(false);
                 }}>
-                  Log out
+                  Wyloguj się
                 </button>
               </>
             ) : (
@@ -206,7 +205,7 @@ const handleSectionClick = (section: Section) => {
               navigate('/login');
                   setIsUserMenuOpen(false);
                 }}>
-                  Log in
+                  Zaloguj się
                 </button>
               </>
             )}

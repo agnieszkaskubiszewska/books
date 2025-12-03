@@ -74,7 +74,7 @@ setSuccess('Check your email for verification');
 
     try {
       await resetPassword(resetEmail);
-  setResetMessage('Check your email for password reset');
+  setResetMessage('Sprawdź swoją pocztę email by zresetować hasło');
       setResetEmail('');
     } catch (err: any) {
       setResetMessage(`Error: ${err.message}`);
@@ -87,12 +87,12 @@ setSuccess('Check your email for verification');
     return (
       <div className="login-page">
         <div className="login-container">
-          <h2>Reset Password</h2>
+          <h2>Resetuj hasło</h2>
           <form onSubmit={handleResetPassword}>
             <div className="log-group">
               <input 
                 type="email" 
-                placeholder="Enter your email" 
+                placeholder="Wpisz swoją pocztę email" 
                 value={resetEmail} 
                 onChange={(e) => setResetEmail(e.target.value)} 
                 required
@@ -104,7 +104,7 @@ setSuccess('Check your email for verification');
               </div>
             )}
             <button type="submit" disabled={isLoading}>
-              {isLoading ? 'Sending...' : 'Send password reset link'}
+              {isLoading ? 'Wysyłanie...' : 'Wyślij link do resetowania hasła'}
             </button>
           </form>
           <div className="log-form-footer">
@@ -117,7 +117,7 @@ setSuccess('Check your email for verification');
               }}
               className="toggle-button"
             >
-              Back to login
+              Powrót do logowania
             </button>
           </div>
         </div>
@@ -128,27 +128,27 @@ setSuccess('Check your email for verification');
   return (
     <div className="login-page">
       <div className="login-container">
-        <h2>{isSignUp ? 'Registration' : 'Login'}</h2>
+        <h2>{isSignUp ? 'Rejestracja' : 'Logowanie'}</h2>
         <form onSubmit={handleSubmit}>
           {isSignUp && (
             <div className="log-group">
-              <input type="text" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" required/>
-              <input type="text" placeholder="Surname" value={surname} onChange={(e) => setSurname(e.target.value)} autoComplete="surname" required/>
+              <input type="text" placeholder="Imię" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" required/>
+              <input type="text" placeholder="Nazwisko" value={surname} onChange={(e) => setSurname(e.target.value)} autoComplete="surname" required/>
             </div>
           )}
           <div className="log-group">
-            <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required/>
-            <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete={isSignUp ? 'new-password' : 'current-password'} required/>
+        <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required/>
+            <input type="password" placeholder="Hasło" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete={isSignUp ? 'new-password' : 'current-password'} required/>
           </div>
           {isSignUp && (
             <div className="log-group">
-              <input type="password" placeholder="Confirm Password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} autoComplete="new-password" required/>
+              <input type="password" placeholder="Potwierdź hasło" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} autoComplete="new-password" required/>
             </div>
           )}
           {error && <div className="error-messages">{error}</div>}
           {success && <div className="success-message">{success}</div>}
           <button type="submit" disabled={isLoading}>
-        {isLoading ? 'Loading...' : isSignUp ? 'Create Account' : 'Login'}
+        {isLoading ? 'Ładowanie...' : isSignUp ? 'Utwórz konto' : 'Zaloguj się'}
           </button>
         </form>
         <div className="log-form-footer">
@@ -162,7 +162,7 @@ setSuccess('Check your email for verification');
             }}
             className="toggle-button"
           >
-            {isSignUp ? 'You already have an account?' : 'You don\'t have an account?'}
+            {isSignUp ? 'Masz już konto?' : 'Nie masz jeszcze konta?'}
           </button>
           {!isSignUp && (
             <button 
@@ -173,7 +173,7 @@ setSuccess('Check your email for verification');
               }}
               className="forgot-password-link"
             >
-              Forgot your password?
+              Zapomniałeś hasła?
             </button>
           )}
         </div>

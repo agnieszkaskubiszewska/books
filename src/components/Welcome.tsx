@@ -10,13 +10,13 @@ const Welcome: React.FC<WelcomeProps> = ({ isLoggedIn }) => {
     <>
       <section className="section">
         <div className="container hero">
-          <h1 className="h1">Read good books.<br/>We will tell you what to read next.</h1>
+<h1 className="h1">Jeszcze bliżej książek.<br/>Dziel się książkami z innymi.</h1>
           <div className="hero-side">
-            <p className="lead">Discover and manage your favorite books. Keep your library organized and inspiring.</p>
+<p className="lead">Odkrywaj i zarządzaj swoimi ulubionymi książkami. Twórz społeczność czytelników.</p>
             <div className="hero-cta">
-              <Link className="btn" to="/books">Browse books</Link>
+              <Link className="btn" to="/books">Przeglądaj książki</Link>
               {isLoggedIn && (
-                <Link className="btn btn--ghost" to="/add-book">Add a book</Link>
+                <Link className="btn btn--ghost" to="/add-book">Dodaj książkę</Link>
               )}
             </div>
           </div>
@@ -26,16 +26,16 @@ const Welcome: React.FC<WelcomeProps> = ({ isLoggedIn }) => {
       <section className="section">
         <div className="container grid-3">
           <div className="card">
-            <h3>Simply useful</h3>
-            <p>Quickly add, browse and evaluate books. Focus on reading, not tooling.</p>
+<h3>Pożycz książki lokalnie</h3>
+<p>Sprawdź książki dostępne w swoim rejonie.</p>
           </div>
           <div className="card">
-            <h3>Inherently organized</h3>
-            <p>Tags, ratings and clear structure help you keep the collection tidy.</p>
+<h3>Dodaj książki które chcesz udostępnić innym</h3>
+<p>Ksiazki ktore dodasz do platformy beda mogły cieszych innych czytelników.</p>
           </div>
           <div className="card">
-<h3>Book your book.</h3>
-<p>Check your friends bookshelf and find something new to read.</p>
+<h3>Dziel się swoimi opiniami</h3>
+<p>Oceń książki i zobacz co myślą inni czytelnicy.</p>
           </div>
         </div>
       </section>
