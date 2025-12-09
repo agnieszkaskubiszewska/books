@@ -12,7 +12,7 @@ const AddBookForm: React.FC<AddBookFormProps> = ({ onAddBook }) => {
     title: '',
     author: '',
     year: new Date().getFullYear(),
-genre: '' as Genre,
+    genre: '' as Genre,
     rating: undefined as number | undefined,
     description: '',
     image: null as File | null,
@@ -22,7 +22,7 @@ genre: '' as Genre,
 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
-  const genreOptions = [
+ const genreOptions = [
     { value: 'fantasy' as Genre, label: 'Fantasy' },
     { value: 'thriller' as Genre, label: 'Thriller' },
     { value: 'romance' as Genre, label: 'Romans' },

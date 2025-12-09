@@ -205,7 +205,7 @@ const handleSectionClick = (section: Section) => {
               navigate('/login');
                   setIsUserMenuOpen(false);
                 }}>
-                  Zaloguj się
+              Zaloguj się
                 </button>
               </>
             )}

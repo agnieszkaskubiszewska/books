@@ -681,6 +681,8 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
                 canAgree: !disableAgree,
                 disableDisagree,
                 closed,
+                isAgreed: decision === 'agree',
+                hasActiveRent: !!(bookId && activeRentDatesByBook[bookId]),
                 replies: sortedAsc.slice(1).map(r => ({
                   id: r.id,
                   text: r.body,
