@@ -30,9 +30,12 @@ interface MessagesProps {
   onAgreeRent: (threadId?: string | null) => void;
   onDisagreeRent: (threadId?: string | null) => void;
   onCloseDiscussion: (threadId?: string | null) => void;
+  onRefreshActiveRents?: () => Promise<void>;
+  onRefreshMessages?: () => Promise<void>;
+  onRefreshBooks?: () => Promise<void>;
 }
 
-const Messages: React.FC<MessagesProps> = ({ messages, onMarkRead, onSendReply, onStartThread, onAgreeRent, onDisagreeRent, onCloseDiscussion }) => {
+const Messages: React.FC<MessagesProps> = ({ messages, onMarkRead, onSendReply, onStartThread, onAgreeRent, onDisagreeRent, onCloseDiscussion, onRefreshActiveRents, onRefreshMessages, onRefreshBooks }) => {
   const [openMessageId, setOpenMessageId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState<string>('');
   const [searchParams, setSearchParams] = useSearchParams();
@@ -159,13 +162,22 @@ chat with owner {m.ownerName} about book: {m.bookTitle}
                   )}
                 </div>
               )}
-              {m.isOwner && m.bookId && (m as any).isAgreed && (m as any).hasActiveRent && !localStorage.getItem(`return_check_done_${(m as any).threadId}`) && (
+              {m.isOwner && m.bookId && (m as any).hasActiveRent && (
                 <FinishedRent
                   bookId={m.bookId}
-                  onDone={() => {
-                    try {
-                      localStorage.setItem(`return_check_done_${(m as any).threadId}`, '1');
-                    } catch {}
+                  onDone={async () => {
+                    // Odśwież aktywne renty po zakończeniu - to ukryje FinishedRent i przyciski agree/disagree
+                    if (onRefreshActiveRents) {
+                      await onRefreshActiveRents();
+                    }
+                    // Odśwież wiadomości, żeby pobrać nowe (w tym systemową o zwrocie)
+                    if (onRefreshMessages) {
+                      await onRefreshMessages();
+                    }
+                    // Odśwież listę książek, żeby książka wróciła na listę dostępnych do wypożyczenia
+                    if (onRefreshBooks) {
+                      await onRefreshBooks();
+                    }
                   }}
                 />
               )}

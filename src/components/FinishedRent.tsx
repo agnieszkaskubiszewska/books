@@ -100,8 +100,8 @@ export default function FinishedRent({ bookId, onDone }: FinishedRentProps) {
   };
 
   return (
-    <section className="section">
-      <div className="container hero messages-hero">
+    <section className="section finished-rent-section">
+      <div className="container finished-rent-hero">
         <h4 className="h4">Czy oddano książkę?</h4>
         {error && <div style={{ color: '#b91c1c', marginBottom: 8 }}>{error}</div>}
         <div style={{ display: 'flex', gap: 8 }}>

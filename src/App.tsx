@@ -94,54 +94,59 @@ const AppContent: React.FC = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  useEffect(() => {
-    const fetchBooks = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('books')
-          .select('id,title,author,description,year,genre,rating,image,created_at,rent,rent_region,owner_id');
+  // Funkcja do odświeżania listy książek
+  const refreshBooks = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('books')
+        .select('id,title,author,description,year,genre,rating,image,created_at,rent,rent_region,owner_id');
 
-        if (error) {
-          console.error('Error fetching books:', error);
-  showNotification(`Error fetching books: ${error.message}`, 'error');
-          return;
-        }
-
-        const mapped: Book[] = (data || []).map((row: any) => ({
-          id: String(row.id),
-          title: row.title,
-          author: row.author,
-          description: row.description ?? '',
-          year: typeof row.year === 'number' ? row.year : (row.created_at ? new Date(row.created_at).getFullYear() : new Date().getFullYear()),
-          genre: (row.genre as Genre) ?? ('other' as Genre),
-          rating: row.rating ?? undefined,
-          image: row.image ?? undefined,
-          rent: !!row.rent,
-          rentRegion: row.rent_region ?? undefined,
-          ownerId: row.owner_id ?? undefined,
-        }));
-
-        setBooks(mapped);
-      } catch (err: any) {
-        console.error('Unexpected error fetching books:', err);
-        showNotification('Unexpected error fetching books', 'error');
+      if (error) {
+        console.error('Error fetching books:', error);
+        showNotification(`Error fetching books: ${error.message}`, 'error');
+        return;
       }
-    };
 
-    fetchBooks();
+      const mapped: Book[] = (data || []).map((row: any) => ({
+        id: String(row.id),
+        title: row.title,
+        author: row.author,
+        description: row.description ?? '',
+        year: typeof row.year === 'number' ? row.year : (row.created_at ? new Date(row.created_at).getFullYear() : new Date().getFullYear()),
+        genre: (row.genre as Genre) ?? ('other' as Genre),
+        rating: row.rating ?? undefined,
+        image: row.image ?? undefined,
+        rent: !!row.rent,
+        rentRegion: row.rent_region ?? undefined,
+        ownerId: row.owner_id ?? undefined,
+      }));
+
+      setBooks(mapped);
+    } catch (err: any) {
+      console.error('Unexpected error fetching books:', err);
+      showNotification('Unexpected error fetching books', 'error');
+    }
+  };
+
+  // Pobieranie listy wszystkich książek z bazy danych przy starcie aplikacji
+  useEffect(() => {
+    refreshBooks();
   }, []);
 
-  // Fetch messages for current user after login
-  useEffect(() => {
+  // Funkcja do odświeżania wiadomości
+  const refreshMessages = async () => {
     if (!isLoggedIn || !currentUserId) return;
-    (async () => {
-      try {
-        const data = await fetchMessagesForUser();
-        setDbMessages(data);
-      } catch (e) {
-        console.error('Error fetching messages:', e);
-      }
-    })();
+    try {
+      const data = await fetchMessagesForUser();
+      setDbMessages(data);
+    } catch (e) {
+      console.error('Error fetching messages:', e);
+    }
+  };
+
+  // Pobieranie wiadomości dla zalogowanego użytkownika po zalogowaniu
+  useEffect(() => {
+    refreshMessages();
   }, [isLoggedIn, currentUserId]);
 
   // Resolve book titles for threads visible in dbMessages
@@ -231,31 +236,34 @@ const AppContent: React.FC = () => {
     })();
   }, [dbMessages]);
 
+  // Funkcja do odświeżania aktywnych rentów
+  const refreshActiveRents = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('rents')
+        .select('book_id, rent_from, rent_to, finished')
+        .eq('finished', false);
+      if (error) {
+        console.error('Error fetching active rents:', error);
+        return;
+      }
+      const byBook: Record<string, { from: string | null; to: string | null }> = {};
+      (data || []).forEach((r: any) => {
+        const bId = String(r.book_id);
+        byBook[bId] = {
+          from: r.rent_from ?? null,
+          to: r.rent_to ?? null
+        };
+      });
+      setActiveRentDatesByBook(byBook);
+    } catch (err) {
+      console.error('Unexpected error fetching rents:', err);
+    }
+  };
+
   // Fetch active rents (finished = false) and map by book_id -> { from, to }
   useEffect(() => {
-    (async () => {
-      try {
-        const { data, error } = await supabase
-          .from('rents')
-          .select('book_id, rent_from, rent_to, finished')
-          .eq('finished', false);
-        if (error) {
-          console.error('Error fetching active rents:', error);
-          return;
-        }
-        const byBook: Record<string, { from: string | null; to: string | null }> = {};
-        (data || []).forEach((r: any) => {
-          const bId = String(r.book_id);
-          byBook[bId] = {
-            from: r.rent_from ?? null,
-            to: r.rent_to ?? null
-          };
-        });
-        setActiveRentDatesByBook(byBook);
-      } catch (err) {
-        console.error('Unexpected error fetching rents:', err);
-      }
-    })();
+    refreshActiveRents();
   }, [books, dbMessages]);
 
   // Resolve display names for participants (first + last name or email local-part)
@@ -542,8 +550,8 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
         ...prev,
         [bookId]: { from: period.from ?? new Date().toISOString(), to: period.to ?? null }
       }));
-      // Optymistycznie ustaw stan książki jako niedostępny (trigger też to zrobi w DB)
-      setBooks(prev => prev.map(b => (b.id === bookId ? { ...b, rent: false } : b)));
+      // Odśwież książki z bazy, żeby mieć aktualny stan (trigger zaktualizuje books.rent w DB)
+      await refreshBooks();
       setThreadDecision(prev => ({ ...prev, [threadId]: 'agree' }));
       // Wyślij systemową wiadomość w tym samym wątku
       if (currentUserId) {
@@ -664,9 +672,10 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
               const decision = threadDecision[threadKey];
               const isOwner = threadOwnerIds[threadKey] === currentUserId;
               const closed = !!threadClosed[threadKey];
-              // Allow Agree by default unless explicitly disallowed by role/decision/closed
-              const disableAgree = !isOwner || decision != null || closed;
-              const disableDisagree = !isOwner || decision != null || closed;
+              const hasActiveRent = !!(bookId && activeRentDatesByBook[bookId]);
+              // Jeśli istnieje aktywny rent w bazie, to znaczy że owner już się zgodził - ukryj przyciski
+              const disableAgree = !isOwner || decision != null || closed || hasActiveRent;
+              const disableDisagree = !isOwner || decision != null || closed || hasActiveRent;
               return {
                 id: head.id,
                 senderName: userNames[head.sender_id] || 'User',
@@ -681,8 +690,8 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
                 canAgree: !disableAgree,
                 disableDisagree,
                 closed,
-                isAgreed: decision === 'agree',
-                hasActiveRent: !!(bookId && activeRentDatesByBook[bookId]),
+                isAgreed: decision === 'agree' || hasActiveRent,
+                hasActiveRent,
                 replies: sortedAsc.slice(1).map(r => ({
                   id: r.id,
                   text: r.body,
@@ -700,6 +709,9 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
               onAgreeRent={(threadId?: string | null) => agreeOnRent(threadId)}
               onDisagreeRent={(threadId?: string | null) => disagreeOnRent(threadId)}
               onCloseDiscussion={(threadId?: string | null) => closeDiscussion(threadId)}
+              onRefreshActiveRents={refreshActiveRents}
+              onRefreshMessages={refreshMessages}
+              onRefreshBooks={refreshBooks}
             />
           ) : (<Navigate to="/login" />)} />
           <Route path="/about" element={<About />} />
