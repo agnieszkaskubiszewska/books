@@ -8,6 +8,11 @@ type CalendarProps = {
   label?: string;
   value?: Dayjs | null;
   onChange?: (value: Dayjs | null) => void;
+  required?: boolean;
+  error?: boolean;
+  helperText?: string;
+  minDate?: Dayjs;
+  maxDate?: Dayjs;
 };
 
 export default function Calendar(props: CalendarProps) {
@@ -26,6 +31,16 @@ export default function Calendar(props: CalendarProps) {
         label={props.label ?? 'Wybierz datę'}
         value={value}
         onChange={handleChange}
+        minDate={props.minDate ?? dayjs()}
+        maxDate={props.maxDate ?? dayjs().add(1, 'month')}
+        slotProps={{
+          textField: {
+            required: props.required,
+            error: props.error,
+            helperText: props.error ? (props.helperText ?? '') : undefined,
+            size: 'small'
+          }
+        }}
       />
     </LocalizationProvider>
   );
