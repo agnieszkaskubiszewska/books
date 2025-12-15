@@ -202,7 +202,14 @@ chat with owner {m.ownerName} about book: {m.bookTitle}
                     {m.replies.map(r => {
                       const isSystem = typeof r.text === 'string' && r.text.startsWith('!system:');
                       if (isSystem) {
-                        const content = r.text.replace(/^!system:\s*/, '');
+                        let content = r.text.replace(/^!system:\s*/, '');
+                        const forBorrower = content.startsWith('[for_borrower]');
+                        if (forBorrower && (m as any).isOwner) {
+                          return null;
+                        }
+                        if (forBorrower) {
+                          content = content.replace(/^\[for_borrower\]\s*/, '');
+                        }
                         return <SystemMemo key={r.id} content={content} />;
                       }
                       const bubbleBase = {
@@ -270,6 +277,9 @@ chat with owner {m.ownerName} about book: {m.bookTitle}
                       label="Rent from"
                       value={rentFrom}
                       onChange={(v) => setRentFrom(v)}
+                      required
+                      error={!rentFrom}
+                      helperText={!rentFrom ? 'Dodaj datę rozpoczęcia' : undefined}
                     />
                   </div>
                   <div style={{ minWidth: 220 }}>
@@ -277,6 +287,9 @@ chat with owner {m.ownerName} about book: {m.bookTitle}
                       label="Rent to"
                       value={rentTo}
                       onChange={(v) => setRentTo(v)}
+                      required
+                      error={!rentTo}
+                      helperText={!rentTo ? 'Dodaj termin zwrotu książki' : undefined}
                     />
                   </div>
                 </div>

@@ -81,7 +81,8 @@ export default function FinishedRent({ bookId, onDone }: FinishedRentProps) {
         return;
       }
       const borrowerId = String((thread as any).other_user_id);
-      const systemBody = '!system: Please contact the owner to agree on a new return date.';
+      // Wiadomość tylko dla pożyczającego (oznaczona tagiem do filtrowania w UI)
+      const systemBody = '!system: [for_borrower] Please contact the owner to agree on a new return date.';
       const { error: msgErr } = await supabase
         .from('messages')
         .insert([{ sender_id: currentUserId, recipient_id: borrowerId, body: systemBody, thread_id: thread.id }]);
