@@ -10,6 +10,7 @@ import Welcome from './components/Welcome';
 import LoginPage from './components/LoginPage';
 import Messages from './components/Messages';
 import Footer from './components/Footer';
+import UserDetails from './components/UserDetails';
 import { Book, Section, Genre } from './types';
 import { supabase } from './supabase';
 import { fetchMessagesForUser,getOrCreateThread as sbGetOrCreateThread, sendMessage as sbSendMessage, markMessageRead as sbMarkMessageRead, createRent as sbCreateRent, closeThread as sbCloseThread, type DbMessage } from './supabase';
@@ -653,6 +654,7 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
         requestedRentDates={requestedRentDatesMergedByBook}
       />
     } />
+          <Route path="/user-details" element={isLoggedIn && user ? <UserDetails user={user} /> : <Navigate to="/login" />} />
           <Route path="/messages" element={isLoggedIn ? (
             <Messages
             messages={Array.from(

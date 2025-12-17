@@ -198,6 +198,12 @@ const handleSectionClick = (section: Section) => {
                 }}>
                   Wyloguj się
                 </button>
+                <button className="user-menu-item" onClick={() => {
+                  navigate('/user-details');
+                  setIsUserMenuOpen(false);
+                }}>
+                  Szczegóły użytkownika
+                </button>
               </>
             ) : (
               <>
