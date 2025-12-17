@@ -63,17 +63,18 @@ const BookList: React.FC<BookListProps> = ({ books, onDeleteBook, isLoggedIn, on
   
   const initialSort = (() => {
     const s = searchParams.get('sort');
-    return s === 'best' || s === 'worst' ? (s as 'best' | 'worst') : 'none';
+    return (['best','worst','most','least'] as const).includes(s as any) ? (s as 'best' | 'worst' | 'most' | 'least') : 'none';
   })();
 
 const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'>(initialRent);
-  const [ratingSort, setRatingSort] = useState<'none' | 'best' | 'worst'>(initialSort);
+  const [ratingSort, setRatingSort] = useState<'none' | 'best' | 'worst' | 'most' | 'least'>(initialSort);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isSortOpen, setIsSortOpen] = useState(false);
   const navigate = useNavigate();
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const modalAnchorRef = useRef<HTMLDivElement | null>(null);
   const [ownerNames, setOwnerNames] = useState<Record<string, string>>({});
+  const [rentCountMap, setRentCountMap] = useState<Record<string, number>>({});
 
   const filteredBooks = useMemo(() => {
     return books.filter(book => {
@@ -104,8 +105,14 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
     if (ratingSort === 'worst') {
       return [...list].sort((a, b) => (a.rating ?? Infinity) - (b.rating ?? Infinity));
     }
+    if (ratingSort === 'most') {
+      return [...list].sort((a, b) => (rentCountMap[b.id] ?? 0) - (rentCountMap[a.id] ?? 0));
+    }
+    if (ratingSort === 'least') {
+      return [...list].sort((a, b) => (rentCountMap[a.id] ?? 0) - (rentCountMap[b.id] ?? 0));
+    }
     return list;
-  }, [filteredBooks, ratingSort]);
+  }, [filteredBooks, ratingSort, rentCountMap]);
 
   useEffect(() => {
     // no-op: przewijamy przed otwarciem modalu w handlerze kliknięcia
@@ -143,6 +150,27 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
       } catch (e) {
         console.error('Unexpected error fetching owners:', e);
         setOwnerNames({});
+      }
+    })();
+  }, [books]);
+
+  // Wczytaj statystyki wypożyczeń dla dostępnych książek i zbuduj mapę id -> rent_count
+  useEffect(() => {
+    (async () => {
+      try {
+        const bookIds = (books || []).map(b => b.id);
+        if (bookIds.length === 0) { setRentCountMap({}); return; }
+        const { data, error } = await supabase
+          .from('books_with_rent_stats')
+          .select('id, rent_count')
+          .in('id', bookIds);
+        if (error) { console.error('Error fetching rent stats:', error); setRentCountMap({}); return; }
+        const map: Record<string, number> = {};
+        (data || []).forEach((row: any) => { map[String(row.id)] = Number(row.rent_count ?? 0); });
+        setRentCountMap(map);
+      } catch (e) {
+        console.error('Unexpected error fetching rent stats:', e);
+        setRentCountMap({});
       }
     })();
   }, [books]);
@@ -234,7 +262,7 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
         {isSortOpen && (
           <div className="filters-panel">
             <div className="filter-group compact">
-      <span className="filter-label">Ocena:</span>
+      <span className="filter-label">Sortuj:</span>
             <div className="toggle-group" role="tablist" aria-label="Sort by rating">
                 <button
                   type="button"
@@ -242,7 +270,7 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
                   aria-pressed={ratingSort === 'none'}
                   onClick={() => setRatingSort('none')}
                 >
-                  Brak
+                  Domyślnie
                 </button>
                 <button
                   type="button"
@@ -259,6 +287,22 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
                   onClick={() => setRatingSort('worst')}
                 >
                   Najgorsze
+                </button>
+                <button
+                  type="button"
+                  className={`toggle-pill toggle-pill--sm ${ratingSort === 'most' ? 'active' : ''}`}
+                  aria-pressed={ratingSort === 'most'}
+                  onClick={() => setRatingSort('most')}
+                >
+                  Najczęściej wypożyczane
+                </button>
+                <button
+                  type="button"
+                  className={`toggle-pill toggle-pill--sm ${ratingSort === 'least' ? 'active' : ''}`}
+                  aria-pressed={ratingSort === 'least'}
+                  onClick={() => setRatingSort('least')}
+                >
+                  Najrzadziej wypożyczane
                 </button>
               </div>
             </div>
