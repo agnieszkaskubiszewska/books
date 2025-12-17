@@ -204,3 +204,34 @@ export async function getOwnerName(ownerId: string): Promise<string> {
   const full = [data?.first_name, data?.last_name].filter(Boolean).join(' ');
   return full;
 }
+
+export async function submitUserRating(params: {
+  rateeId: string;
+  raterId: string;
+  role: 'owner' | 'borrower';
+  rating: number;
+  threadId?: string | null;
+}) {
+  const { rateeId, raterId, role, rating, threadId } = params;
+  const { error: insErr } = await supabase
+    .from('user_ratings')
+    .insert([{ ratee_id: rateeId, rater_id: raterId, role, rating, thread_id: threadId ?? null }]);
+  if (insErr) throw new Error(insErr.message);
+  // Update aggregate column in users (owner_rating / borrower_rating) from fresh average
+  const { data: avgRow, error: avgErr } = await supabase
+    .from('user_ratings')
+    .select('rating')
+    .eq('ratee_id', rateeId)
+    .eq('role', role);
+  if (avgErr) throw new Error(avgErr.message);
+  const ratings = (avgRow || []).map((r: any) => Number(r.rating || 0));
+  const avg = ratings.length ? (ratings.reduce((a, b) => a + b, 0) / ratings.length) : 0;
+  const avgInt = Math.round(avg);
+  const column = role === 'owner' ? 'owner_rating' : 'borrower_rating';
+  const { error: updErr } = await supabase
+    .from('users')
+    .update({ [column]: avgInt })
+    .eq('id', rateeId);
+  if (updErr) throw new Error(updErr.message);
+  return true;
+}

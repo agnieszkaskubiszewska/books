@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import dayjs, { Dayjs } from 'dayjs';
 import Calendar from './Calendar';
 import SystemMemo from './SystemMemo';
+import { submitUserRating } from '../supabase';
 import FinishedRent from './FinishedRent';
 
 type MessageItem = {
@@ -15,9 +16,13 @@ type MessageItem = {
   ownerName?: string;
   bookId?: string;
   isOwner?: boolean;
+  isAgreed?: boolean;
   canAgree?: boolean;
   disableDisagree?: boolean;
   closed?: boolean;
+  threadId?: string;
+  otherUserId?: string;
+  otherUserName?: string;
   read: boolean;
   replies?: { id: string; text: string; time: string; senderName: string; isMine?: boolean; read?: boolean; toMe?: boolean }[];
 };
@@ -162,25 +167,16 @@ chat with owner {m.ownerName} about book: {m.bookTitle}
                   )}
                 </div>
               )}
-              {m.isOwner && m.bookId && (m as any).hasActiveRent && (
-                <FinishedRent
-                  bookId={m.bookId}
-                  onDone={async () => {
-                    // Odśwież aktywne renty po zakończeniu - to ukryje FinishedRent i przyciski agree/disagree
-                    if (onRefreshActiveRents) {
-                      await onRefreshActiveRents();
-                    }
-                    // Odśwież wiadomości, żeby pobrać nowe (w tym systemową o zwrocie)
-                    if (onRefreshMessages) {
-                      await onRefreshMessages();
-                    }
-                    // Odśwież listę książek, żeby książka wróciła na listę dostępnych do wypożyczenia
-                    if (onRefreshBooks) {
-                      await onRefreshBooks();
-                    }
-                  }}
+              {(m as any).isAgreed && !m.closed && (m as any).otherUserId && (
+                <RatingPrompt
+                  threadId={(m as any).threadId!}
+                  otherUserId={(m as any).otherUserId!}
+                  otherUserName={(m as any).otherUserName || 'użytkownika'}
+                  isOwner={!!m.isOwner}
                 />
               )}
+
+              
 
               <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                 <div className="message-avatar">
@@ -258,6 +254,22 @@ chat with owner {m.ownerName} about book: {m.bookTitle}
                   )}
                 </div>
               </div>
+              {m.isOwner && m.bookId && (m as any).hasActiveRent && (
+                <FinishedRent
+                  bookId={m.bookId!}
+                  onDone={async () => {
+                    if (onRefreshActiveRents) {
+                      await onRefreshActiveRents();
+                    }
+                    if (onRefreshMessages) {
+                      await onRefreshMessages();
+                    }
+                    if (onRefreshBooks) {
+                      await onRefreshBooks();
+                    }
+                  }}
+                />
+              )}
             </div>
           ))}
           {/* Start nowej rozmowy gdy jest query param to */}
@@ -351,3 +363,58 @@ chat with owner {m.ownerName} about book: {m.bookTitle}
 };
 
 export default Messages;
+
+// Inline rating prompt component using existing rating-table styles
+function RatingPrompt({ threadId, otherUserId, otherUserName, isOwner }: { threadId: string; otherUserId: string; otherUserName: string; isOwner: boolean }) {
+  const [selected, setSelected] = React.useState<number>(0);
+  const ratedKey = `rating_done_${threadId}_${otherUserId}`;
+  const [done, setDone] = React.useState<boolean>(!!localStorage.getItem(ratedKey));
+  const [thanks, setThanks] = React.useState<string | null>(null);
+
+  const handleRate = async (value: number) => {
+    if (done) return;
+    try {
+      const { data: auth } = await supabase.auth.getUser();
+      const currentUserId = auth.user?.id;
+      if (!currentUserId) { alert('Musisz być zalogowany'); return; }
+      // Oceniany ma odwrotną rolę
+      const rateeRole = isOwner ? 'borrower' : 'owner';
+      await submitUserRating({
+        rateeId: otherUserId,
+        raterId: currentUserId,
+        role: rateeRole as any,
+        rating: value,
+        threadId
+      });
+      setSelected(value);
+      localStorage.setItem(ratedKey, '1');
+      setDone(true);
+      setThanks('Dziękujemy za ocenę!');
+    } catch (e: any) {
+      setThanks(e?.message ?? 'Nie udało się zapisać oceny');
+    }
+  };
+
+  return (
+    <div className="card" style={{ marginTop: 8 }}>
+      <div style={{ fontWeight: 700, marginBottom: 6 }}>Oceń {otherUserName}</div>
+      {done ? (
+        <div style={{ fontSize: 14, color: '#065f46' }}>{thanks || 'Dziękujemy za ocenę!'}</div>
+      ) : (
+        <>
+          <div className="rating-table" style={{ justifyContent: 'flex-start' }}>
+            {[1,2,3,4,5].map(i => (
+              <label key={i} className="rating-option" title={`${i} / 5`} onClick={() => handleRate(i)}>
+                <input type="radio" name={`rate-${threadId}`} value={i} readOnly />
+                <span className={`book-emoji ${i <= (selected ?? 0) ? 'active' : ''}`} aria-hidden="true">⭐</span>
+              </label>
+            ))}
+          </div>
+          <div style={{ fontSize: 12, color: '#64748b', marginTop: 6 }}>
+            Możesz ocenić tylko raz po akceptacji wypożyczenia.
+          </div>
+        </>
+      )}
+    </div>
+  );
+}

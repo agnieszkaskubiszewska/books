@@ -10,6 +10,7 @@ import Welcome from './components/Welcome';
 import LoginPage from './components/LoginPage';
 import Messages from './components/Messages';
 import Footer from './components/Footer';
+import UserDetails from './components/UserDetails';
 import { Book, Section, Genre } from './types';
 import { supabase } from './supabase';
 import { fetchMessagesForUser,getOrCreateThread as sbGetOrCreateThread, sendMessage as sbSendMessage, markMessageRead as sbMarkMessageRead, createRent as sbCreateRent, closeThread as sbCloseThread, type DbMessage } from './supabase';
@@ -653,6 +654,7 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
         requestedRentDates={requestedRentDatesMergedByBook}
       />
     } />
+          <Route path="/user-details" element={isLoggedIn && user ? <UserDetails user={user} /> : <Navigate to="/login" />} />
           <Route path="/messages" element={isLoggedIn ? (
             <Messages
             messages={Array.from(
@@ -673,6 +675,8 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
               const isOwner = threadOwnerIds[threadKey] === currentUserId;
               const closed = !!threadClosed[threadKey];
               const hasActiveRent = !!(bookId && activeRentDatesByBook[bookId]);
+              const participants = Array.from(new Set(sortedAsc.flatMap(m => [m.sender_id, m.recipient_id]).filter(Boolean))) as string[];
+              const otherUserId = participants.find(id => id !== currentUserId) || null;
               // Jeśli istnieje aktywny rent w bazie, to znaczy że owner już się zgodził - ukryj przyciski
               const disableAgree = !isOwner || decision != null || closed || hasActiveRent;
               const disableDisagree = !isOwner || decision != null || closed || hasActiveRent;
@@ -687,6 +691,8 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
                 bookId,
                 isOwner,
                 threadId: threadKey,
+                otherUserId: otherUserId || undefined,
+                otherUserName: otherUserId ? (userNames[otherUserId] || 'User') : undefined,
                 canAgree: !disableAgree,
                 disableDisagree,
                 closed,
