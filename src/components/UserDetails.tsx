@@ -7,6 +7,13 @@ function UserDetails({ user }: { user: any }) {
   const [error, setError] = React.useState<string | null>(null);
   const [currentRents, setCurrentRents] = React.useState<Array<{ id: string; title: string; rent_from: string | null; rent_to: string | null; role: 'owner' | 'borrower' }>>([]);
   const [rentHistory, setRentHistory] = React.useState<Array<{ id: string; title: string; rent_from: string | null; rent_to: string | null; role: 'owner' | 'borrower' }>>([]);
+  const [ratingOwner, setRatingOwner] = React.useState<number | null>(null);
+  const [ratingBorrower, setRatingBorrower] = React.useState<number | null>(null);
+  const ratingOverall = React.useMemo(() => {
+    const vals = [ratingOwner, ratingBorrower].filter((v): v is number => typeof v === 'number' && !Number.isNaN(v));
+    if (vals.length === 0) return null;
+    return Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 100) / 100;
+  }, [ratingOwner, ratingBorrower]);
 
   React.useEffect(() => {
     (async () => {
@@ -69,6 +76,32 @@ function UserDetails({ user }: { user: any }) {
             role: r.book_owner === authUserId ? 'owner' : 'borrower'
           })));
         }
+        // Initial ratings (compute from user_ratings)
+        const { data: ratingsRows, error: ratingsErr } = await supabase
+          .from('user_ratings')
+          .select('role, rating')
+          .eq('ratee_id', authUserId);
+        if (!ratingsErr && ratingsRows) {
+          const ownerVals = ratingsRows.filter((r: any) => r.role === 'owner').map((r: any) => Number(r.rating || 0));
+          const borrowerVals = ratingsRows.filter((r: any) => r.role === 'borrower').map((r: any) => Number(r.rating || 0));
+          setRatingOwner(ownerVals.length ? ownerVals.reduce((a, b) => a + b, 0) / ownerVals.length : null);
+          setRatingBorrower(borrowerVals.length ? borrowerVals.reduce((a, b) => a + b, 0) / borrowerVals.length : null);
+        }
+        // Realtime updates for ratings
+        const channel = supabase
+          .channel(`user_ratings_${authUserId}`)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'user_ratings', filter: `ratee_id=eq.${authUserId}` }, async () => {
+            const { data: rr } = await supabase
+              .from('user_ratings')
+              .select('role, rating')
+              .eq('ratee_id', authUserId);
+            const ownerVals2 = (rr || []).filter((r: any) => r.role === 'owner').map((r: any) => Number(r.rating || 0));
+            const borrowerVals2 = (rr || []).filter((r: any) => r.role === 'borrower').map((r: any) => Number(r.rating || 0));
+            setRatingOwner(ownerVals2.length ? ownerVals2.reduce((a, b) => a + b, 0) / ownerVals2.length : null);
+            setRatingBorrower(borrowerVals2.length ? borrowerVals2.reduce((a, b) => a + b, 0) / borrowerVals2.length : null);
+          })
+          .subscribe();
+        return () => { try { supabase.removeChannel(channel); } catch {} };
       } catch (e) {
         console.error('Unexpected error fetching rents:', e);
         setCurrentRents([]); setRentHistory([]);
@@ -104,7 +137,20 @@ function UserDetails({ user }: { user: any }) {
         </div>
         <div className="card user-rating">
 <h1>Ocena użytkownika</h1>
-<p>Rating: {user?.rating ?? 'no rating yet'}</p>
+{ratingOverall === null ? (
+  <p>no rating yet</p>
+) : (
+  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>
+    <div className="rating-table" style={{ justifyContent: 'flex-start' }}>
+      {[1,2,3,4,5].map(i => (
+        <span key={i} className={`book-emoji ${i <= Math.round(ratingOverall) ? 'active' : ''}`} aria-hidden="true" style={{ fontSize: 22 }}>
+          ⭐
+        </span>
+      ))}
+    </div>
+    <div style={{ fontWeight: 500 }}>{ratingOverall.toFixed(2)}</div>
+  </div>
+)}
 </div>
           <div className="card current-share">
             <h1>Aktualnie udostępniam</h1>

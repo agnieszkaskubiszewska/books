@@ -675,6 +675,8 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
               const isOwner = threadOwnerIds[threadKey] === currentUserId;
               const closed = !!threadClosed[threadKey];
               const hasActiveRent = !!(bookId && activeRentDatesByBook[bookId]);
+              const participants = Array.from(new Set(sortedAsc.flatMap(m => [m.sender_id, m.recipient_id]).filter(Boolean))) as string[];
+              const otherUserId = participants.find(id => id !== currentUserId) || null;
               // Jeśli istnieje aktywny rent w bazie, to znaczy że owner już się zgodził - ukryj przyciski
               const disableAgree = !isOwner || decision != null || closed || hasActiveRent;
               const disableDisagree = !isOwner || decision != null || closed || hasActiveRent;
@@ -689,6 +691,8 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
                 bookId,
                 isOwner,
                 threadId: threadKey,
+                otherUserId: otherUserId || undefined,
+                otherUserName: otherUserId ? (userNames[otherUserId] || 'User') : undefined,
                 canAgree: !disableAgree,
                 disableDisagree,
                 closed,
