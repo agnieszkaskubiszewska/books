@@ -4,6 +4,7 @@ import { supabase} from '../supabase';
 import { Book, Genre } from '../types';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import BookView from './bookView';
+import { useTranslation } from 'react-i18next';
 function scrollElementToViewportCenter(el: HTMLElement, options: ScrollToOptions = { behavior: 'smooth' }) {
   const rect = el.getBoundingClientRect();
   const vh = window.innerHeight || document.documentElement.clientHeight;
@@ -23,18 +24,12 @@ interface BookListProps {
 
 
 const BookList: React.FC<BookListProps> = ({ books, onDeleteBook, isLoggedIn, onRent, isAdmin, requestedRentDates }) => {
+  const { t } = useTranslation();
   const getGenreName = (genre: Genre): string => {
-    const genres: Record<Genre, string> = {
-      'fantasy': 'Fantasy',
-      'thriller': 'Thriller',
-      'romance': 'Romans',
-      'sci-fi': 'Science Fiction',
-      'mystery': 'Mystery',
-      'biography': 'Biography',
-      'history': 'History',
-      'other': 'Inne'
-    };
-    return genres[genre] || genre;
+    // tłumaczenie nazw gatunków przez i18n
+    const key = `genres.${genre}`;
+    const translated = t(key);
+    return translated === key ? genre : translated;
   };
   const [searchParams, setSearchParams] = useSearchParams();
   const [bookInfo, setBookInfo] = useState<{ title: string; author: string; } | null>(null);
@@ -179,15 +174,15 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
   if (books.length === 0) {
     return (
       <div className="book-list">
-    <h2>Książki</h2>
-        <p>Brak książek. Dodaj pierwszą książkę!</p>
+    <h2>{t('books.title')}</h2>
+        <p>{t('books.noResults')}</p>
       </div>
     );
   }
 
   return (
     <div className="book-list">
-      <h2>Książki</h2>
+      <h2>{t('books.title')}</h2>
       <div ref={modalAnchorRef} />
       <div className="filters-toolbar">
         <div className="filters-actions">
@@ -195,7 +190,7 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
           <button
             type="button"
             className={`icon-btn ${isFilterOpen ? 'active' : ''}`}
-            aria-label="Filter books"
+            aria-label={t('books.filterAria')}
             aria-expanded={isFilterOpen}
             onClick={() => setIsFilterOpen(v => !v)}
           >
@@ -207,7 +202,7 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
           <button
             type="button"
             className={`icon-btn ${isSortOpen ? 'active' : ''}`}
-            aria-label="Sort books"
+            aria-label={t('books.sortAria')}
             aria-expanded={isSortOpen}
             onClick={() => setIsSortOpen(v => !v)}
           >
@@ -221,14 +216,14 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
             className="btn btn--ghost filters-reset"
             onClick={() => { setRentFilter('all'); setRatingSort('none'); setIsFilterOpen(false); setIsSortOpen(false); }}
           >
-            Resetuj filtry
+            {t('books.reset')}
           </button>
         </div>
 
         {isFilterOpen && (
           <div className="filters-panel">
             <div className="filter-group compact">
-              <span className="filter-label">Filtr:</span>
+              <span className="filter-label">{t('books.filters')}:</span>
               <div className="toggle-group" role="tablist" aria-label="Filter availability">
                 <button
                   type="button"
@@ -236,7 +231,7 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
                   aria-pressed={rentFilter === 'all'}
                   onClick={() => setRentFilter('all')}
                 >
-                  Wszystkie
+                  {t('books.all')}
                 </button>
                 <button
                   type="button"
@@ -244,7 +239,7 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
                   aria-pressed={rentFilter === 'rentable'}
                   onClick={() => setRentFilter('rentable')}
                 >
-                  Dostępne
+                  {t('books.rentable')}
                 </button>
                 <button
                   type="button"
@@ -252,7 +247,7 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
                   aria-pressed={rentFilter === 'not_rentable'}
                   onClick={() => setRentFilter('not_rentable')}
                 >
-                  Wypożyczane
+                  {t('books.not_rentable')}
                 </button>
               </div>
             </div>
@@ -262,7 +257,7 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
         {isSortOpen && (
           <div className="filters-panel">
             <div className="filter-group compact">
-      <span className="filter-label">Sortuj:</span>
+      <span className="filter-label">{t('books.sort')}:</span>
             <div className="toggle-group" role="tablist" aria-label="Sort by rating">
                 <button
                   type="button"
@@ -270,7 +265,7 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
                   aria-pressed={ratingSort === 'none'}
                   onClick={() => setRatingSort('none')}
                 >
-                  Domyślnie
+                  {t('books.default')}
                 </button>
                 <button
                   type="button"
@@ -278,7 +273,7 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
                   aria-pressed={ratingSort === 'best'}
                   onClick={() => setRatingSort('best')}
                 >
-                  Najlepsze
+                  {t('books.best')}
                 </button>
                 <button
                   type="button"
@@ -286,7 +281,7 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
                   aria-pressed={ratingSort === 'worst'}
                   onClick={() => setRatingSort('worst')}
                 >
-                  Najgorsze
+                  {t('books.worst')}
                 </button>
                 <button
                   type="button"
@@ -294,7 +289,7 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
                   aria-pressed={ratingSort === 'most'}
                   onClick={() => setRatingSort('most')}
                 >
-                  Najczęściej wypożyczane
+                  {t('books.most')}
                 </button>
                 <button
                   type="button"
@@ -302,7 +297,7 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
                   aria-pressed={ratingSort === 'least'}
                   onClick={() => setRatingSort('least')}
                 >
-                  Najrzadziej wypożyczane
+                  {t('books.least')}
                 </button>
               </div>
             </div>
@@ -311,7 +306,7 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
       </div>
       <div className="books-mosaic">
         {visibleBooks.length === 0 ? (
-          <p>Brak książek dla wybranych filtrów.</p>
+          <p>{t('books.noResults')}</p>
         ) : (
           visibleBooks.map(book => (
             <div key={book.id} className="book-item" onClick={() => {
@@ -327,29 +322,29 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
                 </div>
               )}
               <h3>{book.title}</h3>
-              <p><strong>Autor:</strong> {book.author}</p>
-              <p><strong>Rok wydania:</strong> {book.year}</p>
-              <p><strong>Gatunek:</strong> {getGenreName(book.genre)}</p>
-              <p><strong>Właściciel:</strong> {book.ownerId ? ownerNames[book.ownerId] : ''}</p>
+              <p><strong>{t('books.labels.author')}:</strong> {book.author}</p>
+              <p><strong>{t('books.labels.year')}:</strong> {book.year}</p>
+              <p><strong>{t('books.labels.genre')}:</strong> {getGenreName(book.genre)}</p>
+              <p><strong>{t('books.owner')}:</strong> {book.ownerId ? ownerNames[book.ownerId] : ''}</p>
               {book.rentRegion && (
-<p><strong>Gdzie wypożyczasz:</strong> {book.rentRegion}</p>
+                <p><strong>{t('books.labels.rentRegion')}:</strong> {book.rentRegion}</p>
               )}
               {!book.rent && (
                 <p style={{ color: '#b91c1c', fontWeight: 700 }}>
-                  Książka jest obecnie wypożyczona
+                  {t('books.currentlyRented')}
                 </p>
               )}
               {!book.rent && requestedRentDates && (
                 <p style={{ color: '#334155', fontWeight: 600 }}>
-                  Proponowany okres wypożyczenia: {requestedRentDates[book.id]?.from ? dayjs(requestedRentDates[book.id]?.from!).format('DD.MM.YYYY') : ''} - {requestedRentDates[book.id]?.to ? dayjs(requestedRentDates[book.id]?.to!).format('DD.MM.YYYY') : ''}
+                  {t('books.proposedPeriod')}: {requestedRentDates[book.id]?.from ? dayjs(requestedRentDates[book.id]?.from!).format('DD.MM.YYYY') : ''} - {requestedRentDates[book.id]?.to ? dayjs(requestedRentDates[book.id]?.to!).format('DD.MM.YYYY') : ''}
                 </p>
               )}
 
               {book.rating && (
-                <p><strong>Ocena:</strong> {renderStars(book.rating)} ({book.rating}/5)</p>
+                <p><strong>{t('books.labels.rating')}:</strong> {renderStars(book.rating)} ({book.rating}/5)</p>
               )}
               {book.description && (
-                <p><strong>Opis:</strong> {book.description}</p>
+                <p><strong>{t('books.labels.description')}:</strong> {book.description}</p>
               )}
               {isLoggedIn && (
                 <>
@@ -365,12 +360,12 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
                         }
                       }}
                     >
-                      Wypożycz
+                      {t('books.rent')}
                     </button>
                   )}
                   {isAdmin && (
                     <button className="delete-book-btn" onClick={(e) => { e.stopPropagation(); onDeleteBook(book.id); }}>
-                    Usuń książkę
+                      {t('books.delete')}
                     </button>
                   )}
                 </>

@@ -1,24 +1,41 @@
-import React, { useEffect, useState } from 'react';
+import React from "react";
+import { useTranslation } from "react-i18next";
 
 const Footer: React.FC = () => {
-  const [language, setLanguage] = useState('pl');
-
- 
-
+  const { t, i18n } = useTranslation();
   const year = new Date().getFullYear();
+
   return (
-    <footer className="footer" style={{ borderTop: '1px solid #e5e7eb', marginTop: 24 }}>
-      <div className="container" style={{ padding: '16px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <div style={{ fontSize: 14, color: '#64748b' }}>
-          © {year} Book App
+    <footer
+      className="footer"
+      style={{ borderTop: "1px solid #e5e7eb", marginTop: 24 }}
+    >
+      <div
+        className="container"
+        style={{
+          padding: "16px 0",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 12,
+          flexWrap: "wrap"
+        }}
+      >
+        <div style={{ fontSize: 14, color: "#64748b" }}>
+          © {year} Book App — {t("footer_rights")}
         </div>
-        <div style={{ display: 'flex', gap: 12 }}>
-          <button className="btn" onClick={() => setLanguage('pl')}>Polski</button>
+
+        <div style={{ display: "flex", gap: 12 }}>
+          <button className="btn" onClick={() => i18n.changeLanguage("pl")}>
+            {t("polish")}
+          </button>
+          <button className="btn" onClick={() => i18n.changeLanguage("en")}>
+            {t("english")}
+          </button>
         </div>
       </div>
-    </footer>   
+    </footer>
   );
 };
 
 export default Footer;
-

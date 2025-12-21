@@ -1,7 +1,9 @@
 import React, { useEffect } from 'react';
 import { NotificationProps } from '../types';
+import { useTranslation } from 'react-i18next';
 
 const Notification: React.FC<NotificationProps> = ({ message, type = 'success', onClose }) => {
+  const { t } = useTranslation();
   useEffect(() => {
     const timer = setTimeout(() => {
       onClose();
@@ -18,7 +20,7 @@ const Notification: React.FC<NotificationProps> = ({ message, type = 'success', 
   return (
     <div className={getNotificationClass()}>
       <span className="notification__message">{message}</span>
-      <button className="notification__close" onClick={onClose}>
+      <button className="notification__close" aria-label={t('notification.close')} onClick={onClose}>
         ×
       </button>
     </div>

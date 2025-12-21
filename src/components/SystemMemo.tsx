@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 type SystemMemoProps = {
   content: string;
@@ -47,6 +48,7 @@ function getStylesForContent(content: string) {
 }
 
 const SystemMemo: React.FC<SystemMemoProps> = ({ content }) => {
+  const { t } = useTranslation();
   const palette = getStylesForContent(content);
   return (
     <div style={{
@@ -54,7 +56,7 @@ const SystemMemo: React.FC<SystemMemoProps> = ({ content }) => {
       padding: 10,
       ...palette
     }}>
-      <strong style={{ display: 'block', marginBottom: 4 }}>System</strong>
+      <strong style={{ display: 'block', marginBottom: 4 }}>{t('systemMemo.systemLabel')}</strong>
       <div>{content}</div>
     </div>
   );

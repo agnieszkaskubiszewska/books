@@ -1,0 +1,161 @@
+{
+  "change_language": "Change language",
+  "polish": "Polish",
+  "english": "English",
+  "footer_rights": "all rights reserved",
+  "nav": {
+    "home": "Home",
+    "addBook": "Add a book",
+    "books": "Books",
+    "about": "About",
+    "contact": "Contact",
+    "messages": "Messages",
+    "userDetails": "User details",
+    "logout": "Log out",
+    "login": "Log in"
+  },
+  "books": {
+    "title": "Books",
+    "filters": "Filter",
+    "all": "All",
+    "rentable": "Available",
+    "not_rentable": "Being rented",
+    "sort": "Sort",
+    "default": "Default",
+    "best": "Best",
+    "worst": "Worst",
+    "most": "Most rented",
+    "least": "Least rented",
+    "reset": "Reset filters",
+    "noResults": "No books for selected filters.",
+    "rent": "Rent",
+    "owner": "Owner",
+    "currentlyRented": "Book is currently rented",
+    "proposedPeriod": "Proposed rent period",
+    "filterAria": "Filter books",
+    "sortAria": "Sort books",
+    "delete": "Delete book",
+    "labels": {
+      "author": "Author",
+      "year": "Year",
+      "genre": "Genre",
+      "rentRegion": "Rent region",
+      "rating": "Rating",
+      "description": "Description"
+    }
+  },
+  "genres": {
+    "fantasy": "Fantasy",
+    "thriller": "Thriller",
+    "romance": "Romance",
+    "sci-fi": "Science Fiction",
+    "mystery": "Mystery",
+    "biography": "Biography",
+    "history": "History",
+    "other": "Other"
+  },
+  "messages": {
+    "title": "Messages",
+    "agree": "Agree on rent",
+    "disagree": "Disagree",
+    "close": "Close discussion",
+    "newMessage": "New message",
+    "aboutBook": "You want to rent book:",
+    "replyPlaceholder": "Write a reply...",
+    "writeToOwner": "Write a message to the owner...",
+    "cancel": "Cancel",
+    "send": "Send"
+  },
+  "user": {
+    "details": "User details",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "email": "Email",
+    "rating": "User rating",
+    "currentShare": "Currently sharing",
+    "currentBorrow": "Currently borrowing",
+    "noneShare": "No currently shared books",
+    "noneBorrow": "No currently borrowed books",
+    "noRating": "no rating yet"
+  },
+  "add": {
+    "title": "Add a new book",
+    "labels": {
+      "title": "Title",
+      "author": "Author",
+      "year": "Year",
+      "genre": "Genre",
+      "rating": "Rating",
+      "description": "Description",
+      "available": "Available to rent",
+      "region": "Region (Poland)",
+      "image": "Book image"
+    },
+    "placeholders": {
+      "description": "Why do you like or dislike this book? Share your experience."
+    },
+    "errors": {
+      "requiredFields": "Please fill in the required fields."
+    },
+    "submit": "Add book"
+  },
+  "bookView": {
+    "author": "Author",
+    "year": "Year of publication",
+    "genre": "Genre",
+    "owner": "Owner",
+    "region": "Rent region",
+    "rating": "Rating",
+    "close": "Close",
+    "delete": "Delete"
+  },
+  "about": {
+    "title": "About Book'ake",
+    "bullets": {
+      "add": "Add new books to your collection",
+      "browse": "Browse your book list",
+      "rate": "Rate books",
+      "describe": "Add descriptions and images",
+      "borrow": "Borrow books from friends"
+    },
+    "lead": "We care about reading—creating a place where you can find your next favorite book."
+  },
+  "contact": {
+    "title": "Contact",
+    "lead": "Get in touch if you have questions or suggestions.",
+    "email": "Email"
+  },
+  "notification": {
+    "close": "Close notification"
+  },
+  "systemMemo": {
+    "systemLabel": "System"
+  },
+  "welcome": {
+    "headingMainLine1": "Closer to books.",
+    "headingMainLine2": "Share your books with others.",
+    "sublead": "Discover and manage your favorite books. Build a community of readers.",
+    "cta": {
+      "browse": "Browse books",
+      "add": "Add a book"
+    },
+    "features": {
+      "localBorrow": {
+        "title": "Borrow books locally",
+        "body": "Check books available in your area."
+      },
+      "addBooks": {
+        "title": "Add books to share with others",
+        "body": "Books you add to the platform can bring joy to other readers."
+      },
+      "shareOpinions": {
+        "title": "Share your opinions",
+        "body": "Rate books and see what other readers think."
+      }
+    }
+  },
+  "common": {
+    "loading": "Loading..."
+  }
+}
+  

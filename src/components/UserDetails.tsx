@@ -1,7 +1,9 @@
 import React from 'react';
 import { supabase } from '../supabase';
+import { useTranslation } from 'react-i18next';
 
 function UserDetails({ user }: { user: any }) {
+  const { t } = useTranslation();
   const [dbUser, setDbUser] = React.useState<{ first_name?: string; last_name?: string; email?: string } | null>(null);
   const [loading, setLoading] = React.useState<boolean>(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -122,23 +124,23 @@ function UserDetails({ user }: { user: any }) {
       <div className="container messages-hero">
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16, width: '100%' }}>
         <div className="card user-details">
-      <h1>Szczegóły użytkownika</h1>
+      <h1>{t('user.details')}</h1>
       {loading ? (
-        <p>Ładowanie...</p>
+        <p>{t('common.loading')}</p>
       ) : error ? (
         <p style={{ color: '#b91c1c' }}>{error}</p>
       ) : (
         <>
-          <p><strong>Imię:</strong> {first}</p>
-          <p><strong>Nazwisko:</strong> {last}</p>
-          <p><strong>Email:</strong> {email}</p>
+          <p><strong>{t('user.firstName')}:</strong> {first}</p>
+          <p><strong>{t('user.lastName')}:</strong> {last}</p>
+          <p><strong>{t('user.email')}:</strong> {email}</p>
         </>
       )}
         </div>
         <div className="card user-rating">
-<h1>Ocena użytkownika</h1>
+<h1>{t('user.rating')}</h1>
 {ratingOverall === null ? (
-  <p>no rating yet</p>
+  <p>{t('user.noRating')}</p>
 ) : (
   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>
     <div className="rating-table" style={{ justifyContent: 'flex-start' }}>
@@ -153,9 +155,9 @@ function UserDetails({ user }: { user: any }) {
 )}
 </div>
           <div className="card current-share">
-            <h1>Aktualnie udostępniam</h1>
+            <h1>{t('user.currentShare')}</h1>
             {currentRents.filter(r => r.role === 'owner').length === 0 ? (
-              <p>Brak aktualnie udostępnionych książek</p>
+              <p>{t('user.noneShare')}</p>
             ) : (
               <ul style={{ marginTop: 8 }}>
                 {currentRents.filter(r => r.role === 'owner').map(r => (
@@ -170,9 +172,9 @@ function UserDetails({ user }: { user: any }) {
             )}
           </div>
           <div className="card current-borrow">
-            <h1>Aktualnie pożyczam</h1>
+            <h1>{t('user.currentBorrow')}</h1>
             {currentRents.filter(r => r.role === 'borrower').length === 0 ? (
-              <p>Brak aktualnie pożyczanych książek</p>
+              <p>{t('user.noneBorrow')}</p>
             ) : (
               <ul style={{ marginTop: 8 }}>
                 {currentRents.filter(r => r.role === 'borrower').map(r => (
