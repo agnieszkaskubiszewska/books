@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Book, Genre } from '../types';
 import { GenreSelect } from './GenreSelect';
+import { useTranslation } from 'react-i18next';
 
 
 interface AddBookFormProps {
@@ -8,6 +9,7 @@ interface AddBookFormProps {
 }
 
 const AddBookForm: React.FC<AddBookFormProps> = ({ onAddBook }) => {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     title: '',
     author: '',
@@ -118,10 +120,10 @@ const AddBookForm: React.FC<AddBookFormProps> = ({ onAddBook }) => {
 
   return (
     <div className="add-book-form">
-      <h2 style={{ fontFamily: 'Spectral, serif' }}>Dodaj nową książkę</h2>
+      <h2 style={{ fontFamily: 'Spectral, serif' }}>{t('add.title')}</h2>
       <form onSubmit={handleSubmit} className="book-form">
         <div className="form-group">
-          <label htmlFor="title" style={{ fontFamily: 'Spectral, serif' }}>Tytuł:</label>
+          <label htmlFor="title" style={{ fontFamily: 'Spectral, serif' }}>{t('add.labels.title')}:</label>
           <input
             type="text"
             id="title"
@@ -133,7 +135,7 @@ const AddBookForm: React.FC<AddBookFormProps> = ({ onAddBook }) => {
         </div>
 
         <div className="form-group">
-          <label htmlFor="author" style={{ fontFamily: 'Spectral, serif' }}>Autor:</label>
+          <label htmlFor="author" style={{ fontFamily: 'Spectral, serif' }}>{t('add.labels.author')}:</label>
           <input
             type="text"
             id="author"
@@ -145,7 +147,7 @@ const AddBookForm: React.FC<AddBookFormProps> = ({ onAddBook }) => {
         </div>
 
         <div className="form-group">
-          <label htmlFor="year" style={{ fontFamily: 'Spectral, serif' }}>Rok:</label>
+          <label htmlFor="year" style={{ fontFamily: 'Spectral, serif' }}>{t('add.labels.year')}:</label>
           <input
             type="number"
             id="year"
@@ -159,7 +161,7 @@ const AddBookForm: React.FC<AddBookFormProps> = ({ onAddBook }) => {
         </div>
 
         <div className="form-group">
-          <label className="dropdown-label" htmlFor="genre" style={{ fontFamily: 'Spectral, serif' }}>Gatunek:</label>
+          <label className="dropdown-label" htmlFor="genre" style={{ fontFamily: 'Spectral, serif' }}>{t('add.labels.genre')}:</label>
           <GenreSelect
             value={formData.genre}
             onChange={(g) => setFormData(p => ({ ...p, genre: g }))}
@@ -168,7 +170,7 @@ const AddBookForm: React.FC<AddBookFormProps> = ({ onAddBook }) => {
         </div>
 
         <div className="form-group">
-          <label style={{ fontFamily: 'Spectral, serif' }}>Ocena:</label>
+          <label style={{ fontFamily: 'Spectral, serif' }}>{t('add.labels.rating')}:</label>
           <div className="rating-table">
             {[1, 2, 3, 4, 5].map((i) => (
               <label
@@ -197,7 +199,7 @@ const AddBookForm: React.FC<AddBookFormProps> = ({ onAddBook }) => {
         </div>
 
         <div className="form-group">
-      <label htmlFor="description" style={{ fontFamily: 'Spectral, serif' }}>Opis:</label>
+      <label htmlFor="description" style={{ fontFamily: 'Spectral, serif' }}>{t('add.labels.description')}:</label>
           <textarea 
             style={{ fontFamily: 'Spectral, serif' }}
             id="description"
@@ -205,11 +207,11 @@ const AddBookForm: React.FC<AddBookFormProps> = ({ onAddBook }) => {
             value={formData.description}
             onChange={handleInputChange}
             rows={4}
-placeholder="Dlaczego lubisz lub nienawisz tej książki. Opowiedz o swoim doświadczeniu."
+placeholder={t('add.placeholders.description') || ''}
           />
         </div>
         <div className="form-group">
-  <label htmlFor="available" style={{ fontFamily: 'Spectral, serif' }}>Dostępna do wypożyczenia:</label>
+  <label htmlFor="available" style={{ fontFamily: 'Spectral, serif' }}>{t('add.labels.available')}:</label>
   <label className="switch" htmlFor="available">
     <input
       id="available"
@@ -227,7 +229,7 @@ placeholder="Dlaczego lubisz lub nienawisz tej książki. Opowiedz o swoim dośw
       <div className="switch-row">
         {formData.available && (
       <div style={{ marginTop: 12 }}>
-        <label style={{ fontFamily: 'Spectral, serif' }}>Region (Polska):</label>
+        <label style={{ fontFamily: 'Spectral, serif' }}>{t('add.labels.region')}:</label>
         <GenreSelect
           value={formData.rentRegion}
           onChange={(r) => setFormData(p => ({ ...p, rentRegion: r }))}
@@ -241,7 +243,7 @@ placeholder="Dlaczego lubisz lub nienawisz tej książki. Opowiedz o swoim dośw
 )}
 
         <div className="form-group">
-          <label htmlFor="image" style={{ fontFamily: 'Spectral, serif' }}  >Zdjęcie książki:</label>
+          <label htmlFor="image" style={{ fontFamily: 'Spectral, serif' }}  >{t('add.labels.image')}:</label>
           <input
             type="file"
             id="image"
@@ -258,7 +260,7 @@ placeholder="Dlaczego lubisz lub nienawisz tej książki. Opowiedz o swoim dośw
 
         <div className="form-buttons">
           <button type="submit" className="submit-btn">
-            Dodaj książkę
+            {t('add.submit')}
           </button>
         </div>
       </form>

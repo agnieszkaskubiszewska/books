@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Section } from '../types';
 
 interface HeaderProps {
@@ -19,6 +20,7 @@ const Header: React.FC<HeaderProps> = ({ currentSection, onSectionChange, user, 
   const location = useLocation();
   const menuRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const { t } = useTranslation();
 
   const initials = React.useMemo(() => {
     if (!user) return '';
@@ -116,34 +118,34 @@ const handleSectionClick = (section: Section) => {
               className="dropdown-item"
               onClick={() => handleSectionClick('welcome')}
             >
-              Home
+              {t('nav.home')}
             </button>
             {isLoggedIn && (
               <button 
                 className="dropdown-item"
                 onClick={() => handleSectionClick('main')}
               >
-                  Dodaj książkę
+                  {t('nav.addBook')}
               </button>
             )}
             <button 
               className="dropdown-item"
               onClick={() => handleSectionClick('books')}
             >
-      Lista książek
+      {t('nav.books')}
             </button>
             
             <button 
               className="dropdown-item"
               onClick={() => handleSectionClick('about')}
             >
-              O nas
+              {t('nav.about')}
             </button>
             <button 
               className="dropdown-item"
               onClick={() => handleSectionClick('contact')}
             >
-              Kontakt
+              {t('nav.contact')}
             </button>
           </div>
         </div>
@@ -190,19 +192,19 @@ const handleSectionClick = (section: Section) => {
                   <span className="user-email">{user.email}</span>
                 </div>
         <button className="user-menu-item" onClick={handleMessagesMenuClick}>
-                  Wiadomości
+                  {t('nav.messages')}
                 </button>
             <button className="user-menu-item" onClick={() => {
                   onLogout();
                   setIsUserMenuOpen(false);
                 }}>
-                  Wyloguj się
+                  {t('nav.logout')}
                 </button>
                 <button className="user-menu-item" onClick={() => {
                   navigate('/user-details');
                   setIsUserMenuOpen(false);
                 }}>
-                  Szczegóły użytkownika
+                  {t('nav.userDetails')}
                 </button>
               </>
             ) : (
@@ -211,7 +213,7 @@ const handleSectionClick = (section: Section) => {
               navigate('/login');
                   setIsUserMenuOpen(false);
                 }}>
-              Zaloguj się
+              {t('nav.login')}
                 </button>
               </>
             )}

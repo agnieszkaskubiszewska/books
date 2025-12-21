@@ -6,6 +6,7 @@ import Calendar from './Calendar';
 import SystemMemo from './SystemMemo';
 import { submitUserRating } from '../supabase';
 import FinishedRent from './FinishedRent';
+import { useTranslation } from 'react-i18next';
 
 type MessageItem = {
   id: string;
@@ -73,10 +74,11 @@ useEffect(() => {
   useEffect(() => {
     setReplyText('');
   }, [openMessageId]);
+  const { t } = useTranslation();
   return (
     <section className="section">
       <div className="container hero messages-hero">
-        <h1 className="h1">Messages</h1>
+        <h1 className="h1">{t('messages.title')}</h1>
       </div>
 <div className="container">
         <div className="messages-list">
@@ -126,7 +128,7 @@ chat with owner {m.ownerName} about book: {m.bookTitle}
                         cursor: m.canAgree ? 'pointer' : 'not-allowed'
                       }}
                     >
-                      Agree on rent
+                      {t('messages.agree')}
                     </button>
                   </div>
                   {!m.disableDisagree && (
@@ -143,7 +145,7 @@ chat with owner {m.ownerName} about book: {m.bookTitle}
                           color: '#991b1b'
                         }}
                       >
-                        Disagree
+                        {t('messages.disagree')}
                       </button>
                     </div>
                   )}
@@ -161,7 +163,7 @@ chat with owner {m.ownerName} about book: {m.bookTitle}
                           color: '#334155'
                         }}
                       >
-                        Close discussion
+                        {t('messages.close')}
                       </button>
                     </div>
                   )}
@@ -278,9 +280,9 @@ chat with owner {m.ownerName} about book: {m.bookTitle}
               <div className="message-avatar">To</div>
               <div className="message-content">
                 <div className="message-header">
-                  <div className="message-sender">New message</div>
+                  <div className="message-sender">{t('messages.newMessage')}</div>
                   {bookTitle && (
-<div className="message-about-book"> You want to rent book: <strong>{bookTitle}</strong></div>
+<div className="message-about-book"> {t('messages.aboutBook')} <strong>{bookTitle}</strong></div>
                   )}
                 </div>
                 <div style={{ display: 'flex', gap: 12, marginTop: 12, flexWrap: 'wrap' }}>
@@ -291,7 +293,7 @@ chat with owner {m.ownerName} about book: {m.bookTitle}
                       onChange={(v) => setRentFrom(v)}
                       required
                       error={!rentFrom}
-                      helperText={!rentFrom ? 'Dodaj datę rozpoczęcia' : undefined}
+                      helperText={!rentFrom ? t('books.proposedPeriod') : undefined}
                     />
                   </div>
                   <div style={{ minWidth: 220 }}>
@@ -301,7 +303,7 @@ chat with owner {m.ownerName} about book: {m.bookTitle}
                       onChange={(v) => setRentTo(v)}
                       required
                       error={!rentTo}
-                      helperText={!rentTo ? 'Dodaj termin zwrotu książki' : undefined}
+                      helperText={!rentTo ? t('messages.writeToOwner') : undefined}
                     />
                   </div>
                 </div>
@@ -309,7 +311,7 @@ chat with owner {m.ownerName} about book: {m.bookTitle}
                   <textarea
                     value={replyText}
                     onChange={(e) => setReplyText(e.target.value)}
-                    placeholder="Write a message to the owner..."
+                    placeholder={t('messages.writeToOwner') || ''}
                     style={{ width: '100%', padding: 10, borderRadius: 12, border: '1px solid #e5e7eb' }}
                     rows={3}
                   />
@@ -326,7 +328,7 @@ chat with owner {m.ownerName} about book: {m.bookTitle}
     setSearchParams(next, { replace: true });
   }}
 >
-  Cancel
+  {t('messages.cancel')}
 </button>
 <button
   className="btn"
@@ -349,7 +351,7 @@ chat with owner {m.ownerName} about book: {m.bookTitle}
     setSearchParams(next, { replace: true });
   }}
 >
-  Send
+  {t('messages.send')}
 </button>
                   </div>
                 </div>

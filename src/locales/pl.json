@@ -1,0 +1,162 @@
+{
+  "welcome": "Witaj w aplikacji!",
+  "change_language": "Zmień język",
+  "polish": "Polski",
+  "english": "Angielski",
+  "footer_rights": "wszystkie prawa zastrzeżone",
+  "nav": {
+    "home": "Strona główna",
+    "addBook": "Dodaj książkę",
+    "books": "Książki",
+    "about": "O aplikacji",
+    "contact": "Kontakt",
+    "messages": "Wiadomości",
+    "userDetails": "Szczegóły użytkownika",
+    "logout": "Wyloguj",
+    "login": "Zaloguj"
+  },
+  "books": {
+    "title": "Książki",
+    "filters": "Filtr",
+    "all": "Wszystkie",
+    "rentable": "Dostępne",
+    "not_rentable": "Wypożyczane",
+    "sort": "Sortuj",
+    "default": "Domyślnie",
+    "best": "Najlepsze",
+    "worst": "Najgorsze",
+    "most": "Najczęściej wypożyczane",
+    "least": "Najrzadziej wypożyczane",
+    "reset": "Resetuj filtry",
+    "noResults": "Brak książek dla wybranych filtrów.",
+    "rent": "Wypożycz",
+    "owner": "Właściciel",
+    "currentlyRented": "Książka jest obecnie wypożyczona",
+    "proposedPeriod": "Proponowany okres wypożyczenia",
+    "filterAria": "Filtruj książki",
+    "sortAria": "Sortuj książki",
+    "delete": "Usuń książkę",
+    "labels": {
+      "author": "Autor",
+      "year": "Rok",
+      "genre": "Gatunek",
+      "rentRegion": "Gdzie wypożyczasz",
+      "rating": "Ocena",
+      "description": "Opis"
+    }
+  },
+  "genres": {
+    "fantasy": "Fantasy",
+    "thriller": "Thriller",
+    "romance": "Romans",
+    "sci-fi": "Science Fiction",
+    "mystery": "Kryminał",
+    "biography": "Biografia",
+    "history": "Historia",
+    "other": "Inne"
+  },
+  "messages": {
+    "title": "Wiadomości",
+    "agree": "Zgódź się",
+    "disagree": "Odrzuć",
+    "close": "Zamknij dyskusję",
+    "newMessage": "Nowa wiadomość",
+    "aboutBook": "Chcesz wypożyczyć książkę:",
+    "replyPlaceholder": "Napisz odpowiedź...",
+    "writeToOwner": "Napisz wiadomość do właściciela...",
+    "cancel": "Anuluj",
+    "send": "Wyślij"
+  },
+  "user": {
+    "details": "Szczegóły użytkownika",
+    "firstName": "Imię",
+    "lastName": "Nazwisko",
+    "email": "Email",
+    "rating": "Ocena użytkownika",
+    "currentShare": "Aktualnie udostępniam",
+    "currentBorrow": "Aktualnie pożyczam",
+    "noneShare": "Brak aktualnie udostępnionych książek",
+    "noneBorrow": "Brak aktualnie pożyczanych książek",
+    "noRating": "brak oceny"
+  },
+  "add": {
+    "title": "Dodaj nową książkę",
+    "labels": {
+      "title": "Tytuł",
+      "author": "Autor",
+      "year": "Rok",
+      "genre": "Gatunek",
+      "rating": "Ocena",
+      "description": "Opis",
+      "available": "Dostępna do wypożyczenia",
+      "region": "Region (Polska)",
+      "image": "Zdjęcie książki"
+    },
+    "placeholders": {
+      "description": "Dlaczego lubisz lub nienawidzisz tej książki. Opowiedz o swoim doświadczeniu."
+    },
+    "errors": {
+      "requiredFields": "Uzupełnij wymagane pola."
+    },
+    "submit": "Dodaj książkę"
+  },
+  "bookView": {
+    "author": "Autor",
+    "year": "Rok wydania",
+    "genre": "Gatunek",
+    "owner": "Właściciel",
+    "region": "Region wypożyczenia",
+    "rating": "Ocena",
+    "close": "Zamknij",
+    "delete": "Usuń"
+  },
+  "about": {
+    "title": "O Book'ake",
+    "bullets": {
+      "add": "Dodawaj nowe książki do swojej kolekcji",
+      "browse": "Przeglądaj swoją listę książek",
+      "rate": "Oceń książki",
+      "describe": "Dodaj opisy i zdjęcia",
+      "borrow": "Wypożyczaj książki od znajomych"
+    },
+    "lead": "W trosce o czytelnictwo tworzymy miejsce, gdzie znajdziesz swoją następną ulubioną książkę."
+  },
+  "contact": {
+    "title": "Kontakt",
+    "lead": "Skontaktuj się z nami, jeśli masz pytania lub sugestie.",
+    "email": "Email"
+  },
+  "notification": {
+    "close": "Zamknij powiadomienie"
+  },
+  "systemMemo": {
+    "systemLabel": "System"
+  },
+  "welcome": {
+    "headingMainLine1": "Jeszcze bliżej książek.",
+    "headingMainLine2": "Dziel się książkami z innymi.",
+    "sublead": "Odkrywaj i zarządzaj swoimi ulubionymi książkami. Twórz społeczność czytelników.",
+    "cta": {
+      "browse": "Przeglądaj książki",
+      "add": "Dodaj książkę"
+    },
+    "features": {
+      "localBorrow": {
+        "title": "Pożycz książki lokalnie",
+        "body": "Sprawdź książki dostępne w swoim rejonie."
+      },
+      "addBooks": {
+        "title": "Dodaj książki, które chcesz udostępnić innym",
+        "body": "Książki dodane do platformy mogą cieszyć innych czytelników."
+      },
+      "shareOpinions": {
+        "title": "Dziel się swoimi opiniami",
+        "body": "Oceń książki i zobacz, co myślą inni czytelnicy."
+      }
+    }
+  },
+  "common": {
+    "loading": "Ładowanie..."
+  }
+}
+  
