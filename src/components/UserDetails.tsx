@@ -188,7 +188,7 @@ function UserDetails({ user }: { user: any }) {
               </ul>
             )}
           </div>
-        </div>
+</div>
 </div>
 </section>
   );

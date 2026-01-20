@@ -14,7 +14,7 @@ const AddBookForm: React.FC<AddBookFormProps> = ({ onAddBook }) => {
     title: '',
     author: '',
     year: new Date().getFullYear(),
-    genre: '' as Genre,
+genre: '' as Genre,
     rating: undefined as number | undefined,
     description: '',
     image: null as File | null,
