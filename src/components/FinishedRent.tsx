@@ -19,7 +19,7 @@ export default function FinishedRent({ bookId, onDone }: FinishedRentProps) {
       setError(null);
       // 1) Zakończ aktywny rent
       const { error: rentErr } = await supabase
-        .from('rents')
+                .from('rents')
         .update({ finished: true })
         .eq('book_id', bookId)
         .eq('finished', false);
@@ -103,7 +103,7 @@ export default function FinishedRent({ bookId, onDone }: FinishedRentProps) {
   return (
     <section className="section finished-rent-section">
       <div className="container finished-rent-hero">
-        <h4 className="h4">Czy oddano książkę?</h4>
+    <h4 className="h4">Czy oddano książkę?</h4>
         {error && <div style={{ color: '#b91c1c', marginBottom: 8 }}>{error}</div>}
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn btn--primary" disabled={submitting || choice !== null} onClick={handleYes}>

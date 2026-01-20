@@ -97,37 +97,37 @@ const AppContent: React.FC = () => {
 
   // Funkcja do odświeżania listy książek
   const refreshBooks = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('books')
-        .select('id,title,author,description,year,genre,rating,image,created_at,rent,rent_region,owner_id');
+      try {
+        const { data, error } = await supabase
+          .from('books')
+          .select('id,title,author,description,year,genre,rating,image,created_at,rent,rent_region,owner_id');
 
-      if (error) {
-        console.error('Error fetching books:', error);
-        showNotification(`Error fetching books: ${error.message}`, 'error');
-        return;
+        if (error) {
+          console.error('Error fetching books:', error);
+  showNotification(`Error fetching books: ${error.message}`, 'error');
+          return;
+        }
+
+        const mapped: Book[] = (data || []).map((row: any) => ({
+          id: String(row.id),
+          title: row.title,
+          author: row.author,
+          description: row.description ?? '',
+          year: typeof row.year === 'number' ? row.year : (row.created_at ? new Date(row.created_at).getFullYear() : new Date().getFullYear()),
+          genre: (row.genre as Genre) ?? ('other' as Genre),
+          rating: row.rating ?? undefined,
+          image: row.image ?? undefined,
+          rent: !!row.rent,
+          rentRegion: row.rent_region ?? undefined,
+          ownerId: row.owner_id ?? undefined,
+        }));
+
+        setBooks(mapped);
+      } catch (err: any) {
+        console.error('Unexpected error fetching books:', err);
+        showNotification('Unexpected error fetching books', 'error');
       }
-
-      const mapped: Book[] = (data || []).map((row: any) => ({
-        id: String(row.id),
-        title: row.title,
-        author: row.author,
-        description: row.description ?? '',
-        year: typeof row.year === 'number' ? row.year : (row.created_at ? new Date(row.created_at).getFullYear() : new Date().getFullYear()),
-        genre: (row.genre as Genre) ?? ('other' as Genre),
-        rating: row.rating ?? undefined,
-        image: row.image ?? undefined,
-        rent: !!row.rent,
-        rentRegion: row.rent_region ?? undefined,
-        ownerId: row.owner_id ?? undefined,
-      }));
-
-      setBooks(mapped);
-    } catch (err: any) {
-      console.error('Unexpected error fetching books:', err);
-      showNotification('Unexpected error fetching books', 'error');
-    }
-  };
+    };
 
   // Pobieranie listy wszystkich książek z bazy danych przy starcie aplikacji
   useEffect(() => {
@@ -137,12 +137,12 @@ const AppContent: React.FC = () => {
   // Funkcja do odświeżania wiadomości
   const refreshMessages = async () => {
     if (!isLoggedIn || !currentUserId) return;
-    try {
-      const data = await fetchMessagesForUser();
-      setDbMessages(data);
-    } catch (e) {
-      console.error('Error fetching messages:', e);
-    }
+      try {
+        const data = await fetchMessagesForUser();
+        setDbMessages(data);
+      } catch (e) {
+        console.error('Error fetching messages:', e);
+      }
   };
 
   // Pobieranie wiadomości dla zalogowanego użytkownika po zalogowaniu

@@ -49,6 +49,7 @@ const Messages: React.FC<MessagesProps> = ({ messages, onMarkRead, onSendReply, 
   const [bookTitle, setBookTitle] = useState<string | null>(null);
   const [rentFrom, setRentFrom] = useState<Dayjs | null>(dayjs());
   const [rentTo, setRentTo] = useState<Dayjs | null>(null);
+  const [rentFromMin, setRentFromMin] = useState<Dayjs | null>(null);
 
 useEffect(() => {
   const id = searchParams.get('book');
@@ -63,6 +64,44 @@ useEffect(() => {
   })();
 }, [searchParams]);
 
+  // Ustal minimalną datę rozpoczęcia wypożyczenia dla nowej rozmowy:
+  // rentFrom >= (aktywne rent_to + 3 dni), jeśli istnieje aktywny rent tej książki
+  useEffect(() => {
+    const bookId = searchParams.get('book');
+    if (!bookId) {
+      setRentFromMin(null);
+      return;
+    }
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('rents')
+          .select('rent_to')
+          .eq('book_id', bookId)
+          .eq('finished', false)
+          .order('rent_from', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (error) {
+          setRentFromMin(dayjs());
+          return;
+        }
+        const base = data?.rent_to ? dayjs(data.rent_to).add(3, 'day') : dayjs();
+        setRentFromMin(base);
+        // jeśli obecny rentFrom jest wcześniejszy niż dozwolone minimum, przesuń go
+        if (!rentFrom || rentFrom.isBefore(base, 'day')) {
+          setRentFrom(base);
+        }
+        // upewnij się, że rentTo nie jest wcześniejsze niż rentFrom
+        if (rentTo && rentTo.isBefore(base, 'day')) {
+          setRentTo(base);
+        }
+      } catch {
+        setRentFromMin(dayjs());
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   useEffect(() => {
     const to = searchParams.get('to');
@@ -107,7 +146,7 @@ useEffect(() => {
                     color: '#334155'
                   }}
                 >
-chat with owner {m.ownerName} about book: {m.bookTitle}
+{t('books.owner')}: {m.ownerName} — {t('messages.aboutBook')} <strong>{m.bookTitle}</strong>
                 </div>
               )}
               {m.isOwner && m.bookId && (
@@ -132,22 +171,22 @@ chat with owner {m.ownerName} about book: {m.bookTitle}
                     </button>
                   </div>
                   {!m.disableDisagree && (
-                    <div>
-                      <button
-                        className="btn"
-                        onClick={(e) => { e.stopPropagation(); onDisagreeRent((m as any).threadId); }}
-                        style={{
-                          fontSize: 12,
-                          padding: '6px 10px',
-                          borderRadius: 8,
-                          border: '1px solid #fca5a5',
-                          background: '#fee2e2',
+                  <div>
+                    <button
+                      className="btn"
+                      onClick={(e) => { e.stopPropagation(); onDisagreeRent((m as any).threadId); }}
+                      style={{
+                        fontSize: 12,
+                        padding: '6px 10px',
+                        borderRadius: 8,
+                        border: '1px solid #fca5a5',
+                        background: '#fee2e2',
                           color: '#991b1b'
-                        }}
-                      >
+                      }}
+                    >
                         {t('messages.disagree')}
-                      </button>
-                    </div>
+                    </button>
+                  </div>
                   )}
                   {!m.closed && (
                     <div>
@@ -244,13 +283,13 @@ chat with owner {m.ownerName} about book: {m.bookTitle}
                       <textarea
                         value={replyText}
                         onChange={(e) => setReplyText(e.target.value)}
-                        placeholder="Write a reply..."
+                    placeholder={t('messages.replyPlaceholder') || ''}
                         style={{ width: '100%', padding: 10, borderRadius: 12, border: '1px solid #e5e7eb' }}
                         rows={3}
                       />
                       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
-                        <button className="btn btn--ghost" onClick={(e) => { e.stopPropagation(); setOpenMessageId(null); setReplyText(''); }}>Cancel</button>
-                        <button className="btn" onClick={(e) => { e.stopPropagation(); onSendReply(m.id, replyText); setReplyText(''); }}>Send</button>
+                    <button className="btn btn--ghost" onClick={(e) => { e.stopPropagation(); setOpenMessageId(null); setReplyText(''); }}>{t('messages.cancel')}</button>
+                    <button className="btn" onClick={(e) => { e.stopPropagation(); onSendReply(m.id, replyText); setReplyText(''); }}>{t('messages.send')}</button>
                       </div>
                     </div>
                   )}
@@ -288,22 +327,24 @@ chat with owner {m.ownerName} about book: {m.bookTitle}
                 <div style={{ display: 'flex', gap: 12, marginTop: 12, flexWrap: 'wrap' }}>
                   <div style={{ minWidth: 220 }}>
                     <Calendar
-                      label="Rent from"
+                      label={t('messages.rentFrom') || 'Rent from'}
                       value={rentFrom}
                       onChange={(v) => setRentFrom(v)}
                       required
                       error={!rentFrom}
                       helperText={!rentFrom ? t('books.proposedPeriod') : undefined}
+                      minDate={rentFromMin ?? dayjs()}
                     />
                   </div>
                   <div style={{ minWidth: 220 }}>
                     <Calendar
-                      label="Rent to"
+                      label={t('messages.rentTo') || 'Rent to'}
                       value={rentTo}
                       onChange={(v) => setRentTo(v)}
                       required
                       error={!rentTo}
                       helperText={!rentTo ? t('messages.writeToOwner') : undefined}
+                      minDate={rentFrom ?? rentFromMin ?? dayjs()}
                     />
                   </div>
                 </div>
