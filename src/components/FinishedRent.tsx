@@ -3,10 +3,11 @@ import { supabase } from '../supabase';
 
 type FinishedRentProps = {
   bookId: string;
+  threadId: string;
   onDone?: () => void;
 };
 
-export default function FinishedRent({ bookId, onDone }: FinishedRentProps) {
+export default function FinishedRent({ threadId, bookId, onDone }: FinishedRentProps) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [choice, setChoice] = useState<'yes' | 'no' | null>(null);
@@ -17,34 +18,36 @@ export default function FinishedRent({ bookId, onDone }: FinishedRentProps) {
     try {
       setSubmitting(true);
       setError(null);
-      // 1) Zakończ aktywny rent
-      const { error: rentErr } = await supabase
-                .from('rents')
-        .update({ finished: true })
-        .eq('book_id', bookId)
-        .eq('finished', false);
-      if (rentErr) throw rentErr;
-      // 2) Wyślij systemową wiadomość do wypożyczającego (borrower): potwierdzenie zwrotu
+      // 1) Znajdź właściwy wątek i wyznacz borrower na podstawie threadId
       const { data: auth } = await supabase.auth.getUser();
       const currentUserId = auth.user?.id;
-      if (currentUserId) {
-        const { data: thread, error: thErr } = await supabase
-          .from('threads')
-          .select('id, other_user_id')
-          .eq('book_id', bookId)
-          .eq('owner_id', currentUserId)
-          .eq('is_closed', false)
-          .order('updated_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        if (!thErr && thread?.id && thread?.other_user_id) {
-          const borrowerId = String((thread as any).other_user_id);
-          const systemBody = '!system: Owner confirmed the book was returned by the borrower.';
-          await supabase
-            .from('messages')
-            .insert([{ sender_id: currentUserId, recipient_id: borrowerId, body: systemBody, thread_id: thread.id }]);
-        }
-      }
+      if (!currentUserId) throw new Error('Not authenticated');
+      const { data: thread, error: thErr } = await supabase
+        .from('threads')
+        .select('id, other_user_id')
+        .eq('book_id', bookId)
+        .eq('id', threadId)
+        .eq('owner_id', currentUserId)
+        .eq('is_closed', false)
+        .maybeSingle();
+      if (thErr) throw thErr;
+      if (!thread?.id || !thread?.other_user_id) throw new Error('Thread not found for this book.');
+      const borrowerId = String((thread as any).other_user_id);
+
+      // 2) Zakończ aktywny rent dla tego borrowera
+      const { error: rentErr } = await supabase
+        .from('rents')
+        .update({ finished: true })
+        .eq('book_id', bookId)
+        .eq('borrower', borrowerId)
+        .eq('finished', false);
+      if (rentErr) throw rentErr;
+
+      // 3) Wyślij systemową wiadomość do wypożyczającego (borrower): potwierdzenie zwrotu
+      const systemBody = '!system: Owner confirmed the book was returned by the borrower.';
+      await supabase
+        .from('messages')
+        .insert([{ sender_id: currentUserId, recipient_id: borrowerId, body: systemBody, thread_id: thread.id }]);
       onDone?.();
     } catch (e: any) {
       setError(e?.message ?? 'Failed to finish rent');
@@ -65,15 +68,14 @@ export default function FinishedRent({ bookId, onDone }: FinishedRentProps) {
         setError('Not authenticated');
         return;
       }
-      // Znajdź aktywny wątek dla tej książki z ownerem = currentUserId
+      // Znajdź wątek po podanym threadId (nie „najnowszy”)
       const { data: thread, error: thErr } = await supabase
         .from('threads')
         .select('id, other_user_id')
         .eq('book_id', bookId)
+        .eq('id', threadId)
         .eq('owner_id', currentUserId)
         .eq('is_closed', false)
-        .order('updated_at', { ascending: false })
-        .limit(1)
         .maybeSingle();
       if (thErr) throw thErr;
       if (!thread?.id || !thread?.other_user_id) {

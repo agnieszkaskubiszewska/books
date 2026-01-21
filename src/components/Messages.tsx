@@ -47,7 +47,8 @@ const Messages: React.FC<MessagesProps> = ({ messages, onMarkRead, onSendReply, 
   const [searchParams, setSearchParams] = useSearchParams();
   
   const [bookTitle, setBookTitle] = useState<string | null>(null);
-  const [rentFrom, setRentFrom] = useState<Dayjs | null>(dayjs());
+  // Ustawiamy null na start, żeby uniknąć migotania zanim pobierzemy min datę
+  const [rentFrom, setRentFrom] = useState<Dayjs | null>(null);
   const [rentTo, setRentTo] = useState<Dayjs | null>(null);
   const [rentFromMin, setRentFromMin] = useState<Dayjs | null>(null);
 
@@ -298,6 +299,7 @@ useEffect(() => {
               {m.isOwner && m.bookId && (m as any).hasActiveRent && (
                 <FinishedRent
                   bookId={m.bookId!}
+                  threadId={(m as any).threadId!}
                   onDone={async () => {
                     if (onRefreshActiveRents) {
                       await onRefreshActiveRents();
@@ -361,7 +363,8 @@ useEffect(() => {
   className="btn btn--ghost"
   onClick={() => {
     setReplyText('');
-    setRentFrom(dayjs());
+    // reset do minimalnej dozwolonej daty (jeśli znana) lub do null
+    setRentFrom(rentFromMin ?? null);
     setRentTo(null);
     const next = new URLSearchParams(searchParams);
     next.delete('to');
@@ -385,7 +388,8 @@ useEffect(() => {
       rentTo ? rentTo.toISOString() : null
     );
     setReplyText('');
-    setRentFrom(dayjs());
+    // po wysłaniu wróć do minimalnej dozwolonej daty
+    setRentFrom(rentFromMin ?? null);
     setRentTo(null);
     const next = new URLSearchParams(searchParams);
     next.delete('to'); next.delete('book');
