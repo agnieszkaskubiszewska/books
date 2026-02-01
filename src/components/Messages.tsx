@@ -1,11 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
-import { useSearchParams } from 'react-router-dom';
-import dayjs, { Dayjs } from 'dayjs';
-import Calendar from './Calendar';
 import SystemMemo from './SystemMemo';
 import { submitUserRating } from '../supabase';
-import FinishedRent from './FinishedRent';
 import { useTranslation } from 'react-i18next';
 
 type MessageItem = {
@@ -44,72 +40,8 @@ interface MessagesProps {
 const Messages: React.FC<MessagesProps> = ({ messages, onMarkRead, onSendReply, onStartThread, onAgreeRent, onDisagreeRent, onCloseDiscussion, onRefreshActiveRents, onRefreshMessages, onRefreshBooks }) => {
   const [openMessageId, setOpenMessageId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState<string>('');
-  const [searchParams, setSearchParams] = useSearchParams();
-  
-  const [bookTitle, setBookTitle] = useState<string | null>(null);
-  // Ustawiamy null na start, żeby uniknąć migotania zanim pobierzemy min datę
-  const [rentFrom, setRentFrom] = useState<Dayjs | null>(null);
-  const [rentTo, setRentTo] = useState<Dayjs | null>(null);
-  const [rentFromMin, setRentFromMin] = useState<Dayjs | null>(null);
 
-useEffect(() => {
-  const id = searchParams.get('book');
-  if (!id) { setBookTitle(null); return; }
-  (async () => {
-    const { data, error } = await supabase
-      .from('books')
-      .select('title')
-      .eq('id', id)
-      .single();
-    setBookTitle(!error ? data?.title ?? null : null);
-  })();
-}, [searchParams]);
-
-  // Ustal minimalną datę rozpoczęcia wypożyczenia dla nowej rozmowy:
-  // rentFrom >= (aktywne rent_to + 3 dni), jeśli istnieje aktywny rent tej książki
-  useEffect(() => {
-    const bookId = searchParams.get('book');
-    if (!bookId) {
-      setRentFromMin(null);
-      return;
-    }
-    (async () => {
-      try {
-        const { data, error } = await supabase
-          .from('rents')
-          .select('rent_to')
-          .eq('book_id', bookId)
-          .eq('finished', false)
-          .order('rent_from', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        if (error) {
-          setRentFromMin(dayjs());
-          return;
-        }
-        const base = data?.rent_to ? dayjs(data.rent_to).add(3, 'day') : dayjs();
-        setRentFromMin(base);
-        // jeśli obecny rentFrom jest wcześniejszy niż dozwolone minimum, przesuń go
-        if (!rentFrom || rentFrom.isBefore(base, 'day')) {
-          setRentFrom(base);
-        }
-        // upewnij się, że rentTo nie jest wcześniejsze niż rentFrom
-        if (rentTo && rentTo.isBefore(base, 'day')) {
-          setRentTo(base);
-        }
-      } catch {
-        setRentFromMin(dayjs());
-      }
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
-
-  useEffect(() => {
-    const to = searchParams.get('to');
-    if (to) {
-      setOpenMessageId('__new__');
-    }
-  }, [searchParams]);
+  // No compose flow here anymore; Messages is only for chatting in existing threads.
 
   useEffect(() => {
     setReplyText('');
@@ -150,65 +82,7 @@ useEffect(() => {
 {t('books.owner')}: {m.ownerName} — {t('messages.aboutBook')} <strong>{m.bookTitle}</strong>
                 </div>
               )}
-              {m.isOwner && m.bookId && (
-                <div style={{ alignSelf: 'flex-start', display: 'flex', gap: 8 }}>
-                  <div>
-                    <button
-                      className="btn"
-                      onClick={(e) => { e.stopPropagation(); onAgreeRent((m as any).threadId); }}
-                      disabled={!m.canAgree}
-                      style={{
-                        fontSize: 12,
-                        padding: '6px 10px',
-                        borderRadius: 8,
-                        border: '1px solid #34d399',
-                        background: '#d1fae5',
-                        color: '#065f46',
-                        opacity: m.canAgree ? 1 : 0.6,
-                        cursor: m.canAgree ? 'pointer' : 'not-allowed'
-                      }}
-                    >
-                      {t('messages.agree')}
-                    </button>
-                  </div>
-                  {!m.disableDisagree && (
-                  <div>
-                    <button
-                      className="btn"
-                      onClick={(e) => { e.stopPropagation(); onDisagreeRent((m as any).threadId); }}
-                      style={{
-                        fontSize: 12,
-                        padding: '6px 10px',
-                        borderRadius: 8,
-                        border: '1px solid #fca5a5',
-                        background: '#fee2e2',
-                          color: '#991b1b'
-                      }}
-                    >
-                        {t('messages.disagree')}
-                    </button>
-                  </div>
-                  )}
-                  {!m.closed && (
-                    <div>
-                      <button
-                        className="btn"
-                        onClick={(e) => { e.stopPropagation(); onCloseDiscussion((m as any).threadId); }}
-                        style={{
-                          fontSize: 12,
-                          padding: '6px 10px',
-                          borderRadius: 8,
-                          border: '1px solid #e5e7eb',
-                          background: '#ffffff',
-                          color: '#334155'
-                        }}
-                      >
-                        {t('messages.close')}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
+              
               {(m as any).isAgreed && !m.closed && (m as any).otherUserId && (
                 <RatingPrompt
                   threadId={(m as any).threadId!}
@@ -296,113 +170,10 @@ useEffect(() => {
                   )}
                 </div>
               </div>
-              {m.isOwner && m.bookId && (m as any).hasActiveRent && (
-                <FinishedRent
-                  bookId={m.bookId!}
-                  threadId={(m as any).threadId!}
-                  onDone={async () => {
-                    if (onRefreshActiveRents) {
-                      await onRefreshActiveRents();
-                    }
-                    if (onRefreshMessages) {
-                      await onRefreshMessages();
-                    }
-                    if (onRefreshBooks) {
-                      await onRefreshBooks();
-                    }
-                  }}
-                />
-              )}
+              
             </div>
           ))}
-          {/* Start nowej rozmowy gdy jest query param to */}
-          {searchParams.get('to') && (
-            <div className="message-item">
-              <div className="message-avatar">To</div>
-              <div className="message-content">
-                <div className="message-header">
-                  <div className="message-sender">{t('messages.newMessage')}</div>
-                  {bookTitle && (
-<div className="message-about-book"> {t('messages.aboutBook')} <strong>{bookTitle}</strong></div>
-                  )}
-                </div>
-                <div style={{ display: 'flex', gap: 12, marginTop: 12, flexWrap: 'wrap' }}>
-                  <div style={{ minWidth: 220 }}>
-                    <Calendar
-                      label={t('messages.rentFrom') || 'Rent from'}
-                      value={rentFrom}
-                      onChange={(v) => setRentFrom(v)}
-                      required
-                      error={!rentFrom}
-                      helperText={!rentFrom ? t('books.proposedPeriod') : undefined}
-                      minDate={rentFromMin ?? dayjs()}
-                    />
-                  </div>
-                  <div style={{ minWidth: 220 }}>
-                    <Calendar
-                      label={t('messages.rentTo') || 'Rent to'}
-                      value={rentTo}
-                      onChange={(v) => setRentTo(v)}
-                      required
-                      error={!rentTo}
-                      helperText={!rentTo ? t('messages.writeToOwner') : undefined}
-                      minDate={rentFrom ?? rentFromMin ?? dayjs()}
-                    />
-                  </div>
-                </div>
-                <div style={{ marginTop: 12 }}>
-                  <textarea
-                    value={replyText}
-                    onChange={(e) => setReplyText(e.target.value)}
-                    placeholder={t('messages.writeToOwner') || ''}
-                    style={{ width: '100%', padding: 10, borderRadius: 12, border: '1px solid #e5e7eb' }}
-                    rows={3}
-                  />
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
-                  <button
-  className="btn btn--ghost"
-  onClick={() => {
-    setReplyText('');
-    // reset do minimalnej dozwolonej daty (jeśli znana) lub do null
-    setRentFrom(rentFromMin ?? null);
-    setRentTo(null);
-    const next = new URLSearchParams(searchParams);
-    next.delete('to');
-    next.delete('book');
-    setSearchParams(next, { replace: true });
-  }}
->
-  {t('messages.cancel')}
-</button>
-<button
-  className="btn"
-  onClick={() => {
-    const to = searchParams.get('to');
-    const bookId = searchParams.get('book');
-    if (!to || !replyText.trim()) return;
-    onStartThread(
-      to,
-      replyText,
-      bookId,
-      rentFrom ? rentFrom.toISOString() : null,
-      rentTo ? rentTo.toISOString() : null
-    );
-    setReplyText('');
-    // po wysłaniu wróć do minimalnej dozwolonej daty
-    setRentFrom(rentFromMin ?? null);
-    setRentTo(null);
-    const next = new URLSearchParams(searchParams);
-    next.delete('to'); next.delete('book');
-    setSearchParams(next, { replace: true });
-  }}
->
-  {t('messages.send')}
-</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+          
         </div>
       </div>
     </section>

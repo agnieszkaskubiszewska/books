@@ -354,9 +354,9 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
                       onClick={(e) => {
                         e.stopPropagation();
                     if (book.ownerId) {
-                      navigate(`/messages?to=${book.ownerId}&book=${book.id}`);
+                      navigate(`/requests?to=${book.ownerId}&book=${book.id}`);
                         } else {
-                          navigate('/messages');
+                          navigate('/requests');
                         }
                       }}
                     >
@@ -376,9 +376,9 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
       onClick={(e) => {
         e.stopPropagation();
         if (book.ownerId) {
-          navigate(`/messages?to=${book.ownerId}&book=${book.id}`);
+          navigate(`/requests?to=${book.ownerId}&book=${book.id}`);
         } else {
-          navigate('/messages');
+          navigate('/requests');
         }
       }}
     >
