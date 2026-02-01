@@ -12,7 +12,8 @@
     "messages": "Messages",
     "userDetails": "User details",
     "logout": "Log out",
-    "login": "Log in"
+    "login": "Log in",
+    "requests": "Requests"
   },
   "books": {
     "title": "Books",
@@ -130,6 +131,10 @@
   },
   "notification": {
     "close": "Close notification"
+  },
+  "requests": {
+    "currentBorrower": "Current borrower",
+    "returned": "Returned"
   },
   "systemMemo": {
     "systemLabel": "System"

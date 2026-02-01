@@ -1,0 +1,503 @@
+import React from 'react';
+import { useSearchParams } from 'react-router-dom';
+import dayjs, { Dayjs } from 'dayjs';
+import Calendar from './Calendar';
+import { useTranslation } from 'react-i18next';
+import { supabase, getOrCreateThread as sbGetOrCreateThread, sendMessage as sbSendMessage, createRent as sbCreateRent } from '../supabase';
+import SingleBookReq from './SingleBookReq';
+import FinishedRent from './FinishedRent';
+
+type RequestItem = {
+  id: string;
+  threadId: string;
+  bookId: string;
+  bookTitle: string;
+  requesterId: string;
+  requesterName: string;
+  periodFrom?: string | null;
+  periodTo?: string | null;
+  createdAt: string;
+};
+
+function parseRequestedPeriod(body: string): { from?: string | null; to?: string | null } {
+  // formats possible:
+  // "!system: Requested rent period from YYYY-MM-DD to YYYY-MM-DD."
+  // "!system: Requested rent period from YYYY-MM-DD."
+  // "!system: Requested rent period to YYYY-MM-DD."
+  const text = body || '';
+  const reFromTo = /Requested rent period(?:\s+from\s+(\d{4}-\d{2}-\d{2}))?(?:\s+to\s+(\d{4}-\d{2}-\d{2}))?/i;
+  const m = text.match(reFromTo);
+  return {
+    from: m?.[1] ?? null,
+    to: m?.[2] ?? null,
+  };
+}
+
+const Requests: React.FC = () => {
+  const { t } = useTranslation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [rentFrom, setRentFrom] = React.useState<Dayjs | null>(null);
+  const [rentTo, setRentTo] = React.useState<Dayjs | null>(null);
+  const [rentFromMin, setRentFromMin] = React.useState<Dayjs | null>(null);
+  const [submitting, setSubmitting] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [requests, setRequests] = React.useState<Record<string, { title: string; items: RequestItem[] }>>({});
+  const [activeRentByBook, setActiveRentByBook] = React.useState<Record<string, boolean>>({});
+  const [acceptedByBook, setAcceptedByBook] = React.useState<Record<string, { threadId: string; requesterId: string; requesterName: string }>>({});
+  const [disabledThreads, setDisabledThreads] = React.useState<Record<string, boolean>>({});
+
+  // Borrower flow: compute min date based on active rent
+  React.useEffect(() => {
+    const bookId = searchParams.get('book');
+    if (!bookId) {
+      setRentFromMin(null);
+      return;
+    }
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('rents')
+          .select('rent_to')
+          .eq('book_id', bookId)
+          .eq('finished', false)
+          .order('rent_from', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const base = !error && data?.rent_to ? dayjs(data.rent_to).add(3, 'day') : dayjs();
+        setRentFromMin(base);
+        if (!rentFrom || rentFrom.isBefore(base, 'day')) setRentFrom(base);
+        if (rentTo && rentTo.isBefore(base, 'day')) setRentTo(base);
+      } catch {
+        const base = dayjs();
+        setRentFromMin(base);
+        if (!rentFrom || rentFrom.isBefore(base, 'day')) setRentFrom(base);
+        if (rentTo && rentTo.isBefore(base, 'day')) setRentTo(base);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  async function handleAgree(it: RequestItem) {
+    try {
+      setSubmitting(true);
+      setError(null);
+      const { data: auth } = await supabase.auth.getUser();
+      const currentUserId = auth.user?.id;
+      if (!currentUserId) { setError('Not authenticated'); return; }
+      // prevent agree if active rent exists
+      const { data: activeRows } = await supabase
+        .from('rents')
+        .select('id')
+        .eq('book_id', it.bookId)
+        .eq('finished', false)
+        .limit(1);
+      if ((activeRows || []).length > 0) {
+        setActiveRentByBook(prev => ({ ...prev, [it.bookId]: true }));
+        setError('Book already rented.');
+        return;
+      }
+      // verify ownership
+      const { data: bookRow, error: bErr } = await supabase
+        .from('books')
+        .select('owner_id')
+        .eq('id', it.bookId)
+        .single();
+      if (bErr) throw bErr;
+      if ((bookRow as any)?.owner_id !== currentUserId) {
+        setError('Only owner can agree.');
+        return;
+      }
+      // create rent
+      await sbCreateRent({
+        bookId: it.bookId,
+        bookOwner: currentUserId,
+        borrower: it.requesterId,
+        rentFrom: it.periodFrom ?? null,
+        rentTo: it.periodTo ?? null
+      });
+      setActiveRentByBook(prev => ({ ...prev, [it.bookId]: true }));
+      setAcceptedByBook(prev => ({ ...prev, [it.bookId]: { threadId: it.threadId, requesterId: it.requesterId, requesterName: it.requesterName } }));
+      // notify borrower (user-facing message)
+      const systemBody = 'Owner zgodził się na wypożyczenie książki w wybranym przez Ciebie terminie';
+      await sbSendMessage({
+        senderId: currentUserId,
+        recipientId: it.requesterId,
+        body: systemBody,
+        threadId: it.threadId
+      });
+      // keep request in list; for accepted borrower show finish controls
+    } catch (e: any) {
+      setError(e?.message ?? 'Failed to agree');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleDisagree(it: RequestItem) {
+    try {
+      setSubmitting(true);
+      setError(null);
+      const { data: auth } = await supabase.auth.getUser();
+      const currentUserId = auth.user?.id;
+      if (!currentUserId) { setError('Not authenticated'); return; }
+      const systemBody = 'Owner nie wyraził zgody na wypożyczenie książki w wybranym przez Ciebie terminie';
+      await sbSendMessage({
+        senderId: currentUserId,
+        recipientId: it.requesterId,
+        body: systemBody,
+        threadId: it.threadId
+      });
+      setRequests(prev => {
+        const next = { ...prev };
+        const group = next[it.bookId];
+        if (group) {
+          group.items = group.items.filter(x => x.id !== it.id);
+          if (group.items.length === 0) delete next[it.bookId];
+        }
+        return next;
+      });
+    } catch (e: any) {
+      setError(e?.message ?? 'Failed to refuse');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  // Po zakończeniu wypożyczenia odśwież stan przycisków dla danej książki
+  async function refreshAfterFinish(bookId: string, threadId: string) {
+    try {
+      const { data } = await supabase
+        .from('rents')
+        .select('id')
+        .eq('book_id', bookId)
+        .eq('finished', false)
+        .limit(1);
+      const stillActive = (data || []).length > 0;
+      setActiveRentByBook(prev => ({ ...prev, [bookId]: stillActive }));
+      // usuń oznaczenie zaakceptowanego borrowera – przyciski wrócą
+      setAcceptedByBook(prev => {
+        const next = { ...prev };
+        delete next[bookId];
+        return next;
+      });
+      // zablokuj przyciski dla właśnie zakończonego wątku (żeby nie mylić ownera)
+      setDisabledThreads(prev => {
+        const next = { ...prev, [threadId]: true };
+        try {
+          const ids = Object.entries(next).filter(([, v]) => !!v).map(([k]) => k);
+          localStorage.setItem('req_disabled_threads', JSON.stringify(ids));
+        } catch {}
+        return next;
+      });
+    } catch {
+      // w razie błędu po prostu spróbuj odblokować – UI i tak odświeży się przy kolejnym wejściu
+      setActiveRentByBook(prev => ({ ...prev, [bookId]: false }));
+      setAcceptedByBook(prev => {
+        const next = { ...prev };
+        delete next[bookId];
+        return next;
+      });
+      setDisabledThreads(prev => {
+        const next = { ...prev, [threadId]: true };
+        try {
+          const ids = Object.entries(next).filter(([, v]) => !!v).map(([k]) => k);
+          localStorage.setItem('req_disabled_threads', JSON.stringify(ids));
+        } catch {}
+        return next;
+      });
+    }
+  }
+
+  // Owner view: fetch requests directed to me
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const { data: auth } = await supabase.auth.getUser();
+        const currentUserId = auth.user?.id;
+        if (!currentUserId) { setRequests({}); return; }
+        // 1) Find system messages with requested period sent TO me
+        const { data: msgs, error: msgErr } = await supabase
+          .from('messages')
+          .select('id, sender_id, recipient_id, body, thread_id, created_at')
+          .ilike('body', '!system: Requested rent period%')
+          .eq('recipient_id', currentUserId)
+          .order('created_at', { ascending: false });
+        if (msgErr) { setRequests({}); return; }
+        const list = msgs || [];
+        if (list.length === 0) { setRequests({}); return; }
+        const threadIds = Array.from(new Set(list.map(m => m.thread_id).filter(Boolean))) as string[];
+        // 2) Resolve threads -> book_id
+        const { data: threads, error: thErr } = await supabase
+          .from('threads')
+          .select('id, book_id, owner_id, other_user_id, is_closed')
+          .in('id', threadIds);
+        if (thErr) { setRequests({}); return; }
+        const threadToBook = new Map<string, string>((threads || []).map((t: any) => [String(t.id), String(t.book_id)]));
+        const bookIds = Array.from(new Set((threads || []).map((t: any) => String(t.book_id)).filter(Boolean)));
+        // 3) Resolve books -> title
+        const { data: booksRows, error: bErr } = await supabase
+          .from('books')
+          .select('id, title')
+          .in('id', bookIds);
+        if (bErr) { setRequests({}); return; }
+        const bookIdToTitle = new Map<string, string>((booksRows || []).map((b: any) => [String(b.id), String(b.title ?? '')]));
+        // 4) Resolve requester names
+        const senderIds = Array.from(new Set(list.map(m => m.sender_id).filter(Boolean))) as string[];
+        let usersRows: any[] = [];
+        if (senderIds.length > 0) {
+          const { data: uRows, error: uErr } = await supabase
+            .from('users')
+            .select('id, first_name, last_name, email')
+            .in('id', senderIds);
+          if (!uErr) usersRows = uRows || [];
+        }
+        const userIdToName = new Map<string, string>(usersRows.map((u: any) => {
+          const first = (u.first_name || '').trim();
+          const last = (u.last_name || '').trim();
+          const full = [first, last].filter(Boolean).join(' ');
+          const fallback = (u.email || '').split('@')[0] || '';
+          return [String(u.id), full || fallback];
+        }));
+        // 5) Build grouped map book_id -> { title, items[] }
+        const grouped: Record<string, { title: string; items: RequestItem[] }> = {};
+        for (const m of list) {
+          const threadId = String(m.thread_id);
+          const bookId = threadToBook.get(threadId);
+          if (!bookId) continue;
+          const title = bookIdToTitle.get(bookId) || '';
+          const period = parseRequestedPeriod(String(m.body || ''));
+          const requesterId = String(m.sender_id);
+          const requesterName = userIdToName.get(requesterId) || 'User';
+          const item: RequestItem = {
+            id: String(m.id),
+            threadId,
+            bookId,
+            bookTitle: title,
+            requesterId,
+            requesterName,
+            periodFrom: period.from ?? null,
+            periodTo: period.to ?? null,
+            createdAt: String(m.created_at),
+          };
+          if (!grouped[bookId]) grouped[bookId] = { title, items: [] };
+          grouped[bookId].items.push(item);
+        }
+        setRequests(grouped);
+        // also mark books that already have active rent to disable agrees and resolve accepted borrower for display
+        if (bookIds.length > 0) {
+          const { data: act } = await supabase
+            .from('rents')
+            .select('book_id, borrower, finished')
+            .in('book_id', bookIds)
+            .eq('finished', false);
+          const map: Record<string, boolean> = {};
+          const accepted: Record<string, { threadId: string; requesterId: string; requesterName: string }> = {};
+          (act || []).forEach((r: any) => { map[String(r.book_id)] = true; });
+          // match borrower to request item for threadId
+          for (const r of (act || [])) {
+            const bId = String(r.book_id);
+            const borrowerId = String(r.borrower);
+            const group = grouped[bId];
+            if (group) {
+              const match = group.items.find(it => it.requesterId === borrowerId);
+              if (match) {
+                accepted[bId] = { threadId: match.threadId, requesterId: match.requesterId, requesterName: match.requesterName };
+              }
+            }
+          }
+          setActiveRentByBook(map);
+          setAcceptedByBook(accepted);
+          // restore disabled threads (persisted locally) but only for currently visible threadIds
+          try {
+            const raw = localStorage.getItem('req_disabled_threads');
+            const saved = raw ? (JSON.parse(raw) as string[]) : [];
+            const visible = new Set<string>(
+              Object.values(grouped).flatMap(g => g.items.map(it => it.threadId))
+            );
+            const restored: Record<string, boolean> = {};
+            (saved || []).forEach((tid: string) => { if (visible.has(tid)) restored[tid] = true; });
+            setDisabledThreads(restored);
+          } catch {
+            setDisabledThreads({});
+          }
+        } else {
+          setActiveRentByBook({});
+          setAcceptedByBook({});
+          setDisabledThreads({});
+        }
+      } catch {
+        setRequests({});
+      }
+    })();
+  }, [searchParams]);
+
+  const handleSubmitRequest = async () => {
+    try {
+      setSubmitting(true);
+      setError(null);
+      const to = searchParams.get('to');
+      const bookId = searchParams.get('book');
+      if (!to || !bookId) { setError('Missing params'); return; }
+      const { data: auth } = await supabase.auth.getUser();
+      const currentUserId = auth.user?.id;
+      if (!currentUserId) { setError('Not authenticated'); return; }
+      const threadId = await sbGetOrCreateThread({ bookId, currentUserId, recipientId: to });
+      const fromStr = rentFrom ? rentFrom.format('YYYY-MM-DD') : null;
+      const toStr = rentTo ? rentTo.format('YYYY-MM-DD') : null;
+      const periodText = fromStr && toStr
+        ? `from ${fromStr} to ${toStr}`
+        : (fromStr ? `from ${fromStr}` : (toStr ? `to ${toStr}` : ''));
+      if (!periodText) { setError('Please select period'); return; }
+      const systemBody = `!system: Requested rent period ${periodText}.`;
+      await sbSendMessage({
+        senderId: currentUserId,
+        recipientId: to,
+        body: systemBody,
+        threadId
+      });
+      // reset and remove params
+      setRentFrom(rentFromMin ?? null);
+      setRentTo(null);
+      const next = new URLSearchParams(searchParams);
+      next.delete('to'); next.delete('book');
+      setSearchParams(next, { replace: true });
+    } catch (e: any) {
+      setError(e?.message ?? 'Failed to send request');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const bookParam = searchParams.get('book');
+  const hasCompose = !!searchParams.get('to') && !!bookParam;
+
+  return (
+    <section className="section">
+      <div className="container hero messages-hero">
+        <h1 className="h1">Requests</h1>
+      </div>
+      <div className="container">
+        {/* Borrower compose form when opened with ?to=&book= */}
+        {hasCompose && (
+          <div className="card" style={{ padding: 16, marginBottom: 16 }}>
+            {error && <div style={{ color: '#b91c1c', marginBottom: 8 }}>{error}</div>}
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              <div style={{ minWidth: 220 }}>
+                <Calendar
+                  label={t('messages.rentFrom') || 'Rent from'}
+                  value={rentFrom}
+                  onChange={(v) => setRentFrom(v)}
+                  required
+                  error={!rentFrom}
+                  helperText={!rentFrom ? t('books.proposedPeriod') : undefined}
+                  minDate={rentFromMin ?? dayjs()}
+                />
+              </div>
+              <div style={{ minWidth: 220 }}>
+                <Calendar
+                  label={t('messages.rentTo') || 'Rent to'}
+                  value={rentTo}
+                  onChange={(v) => setRentTo(v)}
+                  required
+                  error={!rentTo}
+                  helperText={!rentTo ? t('messages.writeToOwner') : undefined}
+                  minDate={rentFrom ?? rentFromMin ?? dayjs()}
+                />
+              </div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
+              <button
+                className="btn btn--ghost"
+                disabled={submitting}
+                onClick={() => {
+                  setRentFrom(rentFromMin ?? null);
+                  setRentTo(null);
+                  const next = new URLSearchParams(searchParams);
+                  next.delete('to'); next.delete('book');
+                  setSearchParams(next, { replace: true });
+                }}
+              >
+                {t('messages.cancel')}
+              </button>
+              <button className="btn" disabled={submitting} onClick={handleSubmitRequest}>
+                {t('messages.send')}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Owner grouped requests by book */}
+        {Object.keys(requests).length === 0 ? (
+          <p>No requests yet.</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {Object.entries(requests).map(([bookId, group]) => (
+              <div key={bookId} className="card" style={{ padding: 16 }}>
+                <h2 className="h2" style={{ marginTop: 0 }}>{group.title}</h2>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {group.items.map((it) => (
+                    <div key={it.id} className="card" style={{ padding: 12 }}>
+                      <SingleBookReq
+                        bookTitle={it.bookTitle}
+                        requesterName={it.requesterName}
+                        periodFrom={it.periodFrom ?? null}
+                        periodTo={it.periodTo ?? null}
+                        createdAt={new Date(it.createdAt).toLocaleString()}
+                      />
+                      {acceptedByBook[it.bookId]?.threadId === it.threadId ? (
+                        <>
+                          <div
+                            style={{
+                              alignSelf: 'flex-start',
+                              background: '#d1fae5',
+                              border: '1px solid #34d399',
+                              color: '#065f46',
+                              padding: '2px 10px',
+                              borderRadius: 9999,
+                              fontSize: 12,
+                              fontWeight: 700,
+                              marginBottom: 8
+                            }}
+                          >
+                            {t('requests.currentBorrower') || 'Current borrower'}
+                          </div>
+                        <FinishedRent
+                          bookId={it.bookId}
+                          threadId={it.threadId}
+                          onDone={async () => {
+                            await refreshAfterFinish(it.bookId, it.threadId);
+                          }}
+                        />
+                        </>
+                      ) : (
+                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
+                          <button
+                            className="btn"
+                            disabled={submitting || !!activeRentByBook[it.bookId] || !!disabledThreads[it.threadId]}
+                            title={
+                              activeRentByBook[it.bookId]
+                                ? 'Book already rented'
+                                : (disabledThreads[it.threadId] ? 'This request already completed' : undefined)
+                            }
+                            onClick={() => handleAgree(it)}
+                          >
+                            {t('messages.agree')}
+                          </button>
+                          <button className="btn btn--ghost" disabled={submitting} onClick={() => handleDisagree(it)}>
+                            {t('messages.disagree')}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+};
+
+export default Requests;

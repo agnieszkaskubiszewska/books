@@ -16,6 +16,7 @@ const Header: React.FC<HeaderProps> = ({ currentSection, onSectionChange, user, 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isMessagesMenuOpen, setIsMessagesMenuOpen] = useState(false);
+  const [isRequestsMenuOpen, setIsRequestsMenuOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const menuRef = useRef<HTMLDivElement>(null);
@@ -47,9 +48,15 @@ const Header: React.FC<HeaderProps> = ({ currentSection, onSectionChange, user, 
     setIsUserMenuOpen(!isUserMenuOpen);
   };
 
-  const handleMessagesMenuClick = () => {
+const handleMessagesMenuClick = () => {
     navigate('/messages');
     setIsMessagesMenuOpen(false);
+    setIsUserMenuOpen(false);
+  };
+
+  const handleRequestsMenuClick = () => {
+    navigate('/requests');
+    setIsRequestsMenuOpen(false);
     setIsUserMenuOpen(false);
   };
 
@@ -189,22 +196,28 @@ const handleSectionClick = (section: Section) => {
               <>
                 <div className="user-info">
         <span className="user-name">{[user.firstName, user.lastName].filter(Boolean).join(' ') || user.name}</span>
-                  <span className="user-email">{user.email}</span>
+              <span className="user-email">{user.email}</span>
                 </div>
         <button className="user-menu-item" onClick={handleMessagesMenuClick}>
                   {t('nav.messages')}
                 </button>
-            <button className="user-menu-item" onClick={() => {
-                  onLogout();
+                <button className="user-menu-item" onClick={() => {
+      handleRequestsMenuClick();
                   setIsUserMenuOpen(false);
                 }}>
-                  {t('nav.logout')}
+                  {t('nav.requests')}
                 </button>
                 <button className="user-menu-item" onClick={() => {
                   navigate('/user-details');
                   setIsUserMenuOpen(false);
                 }}>
                   {t('nav.userDetails')}
+                </button>
+                <button className="user-menu-item" onClick={() => {
+                  onLogout();
+                  setIsUserMenuOpen(false);
+                }}>
+                  {t('nav.logout')}
                 </button>
               </>
             ) : (

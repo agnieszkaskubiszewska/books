@@ -9,6 +9,7 @@ import Notification from './components/Notification';
 import Welcome from './components/Welcome';
 import LoginPage from './components/LoginPage';
 import Messages from './components/Messages';
+import Requests from './components/Requests';
 import Footer from './components/Footer';
 import UserDetails from './components/UserDetails';
 import { Book, Section, Genre } from './types';
@@ -491,6 +492,7 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
       // zapamiętaj proponowany okres wypożyczenia dla tego wątku
       setRequestedRentDates(prev => ({ ...prev, [threadId]: { from: rentFrom ?? null, to: rentTo ?? null } }));
       // wyślij dodatkową systemową wiadomość z proponowanymi datami dla właściciela
+      let appended = false;
       if ((rentFrom || rentTo)) {
         const hasExisting = dbMessages.some(m => ((m.thread_id ?? m.id) === threadId) && typeof m.body === 'string' && m.body.startsWith('!system: Requested rent period'));
         if (!hasExisting) {
@@ -507,14 +509,14 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
               body: systemBody,
               threadId
             });
-            if (sysMsg) {
-              setDbMessages(prev => [sysMsg, inserted, ...prev]);
-            }
+            if (sysMsg) { setDbMessages(prev => [sysMsg, inserted, ...prev]); appended = true; }
           }
         }
       }
-      if (inserted) setDbMessages(prev => [inserted, ...prev]);
-      else setDbMessages(await fetchMessagesForUser());
+      if (!appended) {
+        if (inserted) setDbMessages(prev => [inserted, ...prev]);
+        else setDbMessages(await fetchMessagesForUser());
+      }
       showNotification('Message sent', 'success');
     } catch (e: any) {
       console.error('startThread error:', e);
@@ -722,6 +724,7 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
           ) : (<Navigate to="/login" />)} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/requests" element={isLoggedIn ? <Requests /> : <Navigate to="/login" />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </main>

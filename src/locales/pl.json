@@ -12,6 +12,7 @@
     "messages": "Wiadomości",
     "userDetails": "Szczegóły użytkownika",
     "logout": "Wyloguj",
+    "requests": "Prośby",
     "login": "Zaloguj"
   },
   "books": {
@@ -130,6 +131,10 @@
   },
   "notification": {
     "close": "Zamknij powiadomienie"
+  },
+  "requests": {
+    "currentBorrower": "Aktualny wypożyczający",
+    "returned": "Zwrócono"
   },
   "systemMemo": {
     "systemLabel": "System"
