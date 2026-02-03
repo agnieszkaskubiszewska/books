@@ -19,9 +19,9 @@ const SingleBookReq: React.FC<SingleBookReqProps> = (props) => {
 return (
     <div>
       <h1>Book: <strong>{bookTitle}</strong></h1>
-      <p>Requester: <strong>{requesterName}</strong></p>
-      <p>Period: <strong>{periodFrom} - {periodTo}</strong></p>
-      <p>Created At: <strong>{createdAt}</strong></p>
+  <p><strong>Requester:</strong> {requesterName}</p>
+      <p><strong>Period:</strong> {periodFrom} - {periodTo}</p>
+      <p><strong>Created At:</strong> {createdAt}</p>
     </div>
   );
 };
