@@ -50,6 +50,7 @@ temp/
 # Backup files
 *.bak
 *.backup
+node_modules.bak.*
 
 # Local configuration files
 config.local.js
