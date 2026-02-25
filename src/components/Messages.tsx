@@ -108,7 +108,22 @@ const Messages: React.FC<MessagesProps> = ({ messages, onMarkRead, onSendReply, 
                   <div className="message-sender">{m.senderName}</div>
                   <div className="message-time">{m.time}</div>
                 </div>
-                <div className="message-body">{m.body}</div>
+                {/* Główna wiadomość: ukryj prefiks !system: i pokaż jako notatkę systemową */}
+                {typeof m.body === 'string' && m.body.startsWith('!system:') ? (
+                  (() => {
+                    let content = (m.body as string).replace(/^!system:\s*/, '');
+                    const forBorrower = content.startsWith('[for_borrower]');
+                    if (forBorrower) {
+                      content = content.replace(/^\[for_borrower\]\s*/, '');
+                      if ((m as any).isOwner) {
+                        return null;
+                      }
+                    }
+                    return <SystemMemo content={content} />;
+                  })()
+                ) : (
+                  <div className="message-body">{m.body}</div>
+                )}
                 {m.replies && m.replies.length > 0 && (
                   <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {m.replies.map(r => {

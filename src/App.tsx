@@ -724,7 +724,7 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
           ) : (<Navigate to="/login" />)} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
-          <Route path="/requests" element={isLoggedIn ? <Requests /> : <Navigate to="/login" />} />
+          <Route path="/requests" element={isLoggedIn ? <Requests onRefreshBooks={refreshBooks} /> : <Navigate to="/login" />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </main>
