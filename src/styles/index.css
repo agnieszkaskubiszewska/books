@@ -1332,3 +1332,30 @@ body { font-family: "MyFont", system-ui, -apple-system, Segoe UI, Roboto, sans-s
 .message-sender { font-weight: 800; color: #0f1720; font-size: 1.25rem; }
 .message-time { color: #7a8a99; font-weight: 600; }
 .message-body { margin-top: 10px; color: #556373; font-size: 1.1rem; }
+
+/* Requests - styled to match Messages */
+.requests-list { display: flex; flex-direction: column; gap: 16px; }
+.request-group { padding: 16px; }
+.request-item {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 14px;
+  background: rgba(255,255,255,0.9);
+  border-radius: 24px;
+  padding: 16px 18px;
+  box-shadow: 0 12px 28px rgba(0,0,0,0.06), inset 0 0 0 1px rgba(255,255,255,0.45);
+}
+.request-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+.request-chip {
+  align-self: flex-start;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 700;
+  margin: 8px 0;
+}
+.request-chip--success { background:#d1fae5; border:1px solid #34d399; color:#065f46; }
+.request-compose { margin-bottom: 16px; }
+.request-error { color:#b91c1c; margin-bottom: 8px; }
+.request-compose__dates { display:flex; gap:12px; flex-wrap:wrap; }
+.request-date { min-width: 220px; }

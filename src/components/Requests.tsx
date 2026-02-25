@@ -33,7 +33,11 @@ function parseRequestedPeriod(body: string): { from?: string | null; to?: string
   };
 }
 
-const Requests: React.FC = () => {
+interface RequestsProps {
+  onRefreshBooks?: () => Promise<void>;
+}
+
+const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [rentFrom, setRentFrom] = React.useState<Dayjs | null>(null);
@@ -125,6 +129,10 @@ const Requests: React.FC = () => {
         body: systemBody,
         threadId: it.threadId
       });
+      // odśwież listę książek (BookList) w aplikacji
+      if (onRefreshBooks) {
+        await onRefreshBooks();
+      }
       // keep request in list; for accepted borrower show finish controls
     } catch (e: any) {
       setError(e?.message ?? 'Failed to agree');
@@ -379,10 +387,10 @@ const Requests: React.FC = () => {
       <div className="container">
         {/* Borrower compose form when opened with ?to=&book= */}
         {hasCompose && (
-          <div className="card" style={{ padding: 16, marginBottom: 16 }}>
-            {error && <div style={{ color: '#b91c1c', marginBottom: 8 }}>{error}</div>}
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-              <div style={{ minWidth: 220 }}>
+          <div className="card request-compose">
+            {error && <div className="request-error">{error}</div>}
+            <div className="request-compose__dates">
+              <div className="request-date">
                 <Calendar
                   label={t('messages.rentFrom') || 'Rent from'}
                   value={rentFrom}
@@ -393,7 +401,7 @@ const Requests: React.FC = () => {
                   minDate={rentFromMin ?? dayjs()}
                 />
               </div>
-              <div style={{ minWidth: 220 }}>
+              <div className="request-date">
                 <Calendar
                   label={t('messages.rentTo') || 'Rent to'}
                   value={rentTo}
@@ -405,7 +413,7 @@ const Requests: React.FC = () => {
                 />
               </div>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
+            <div className="request-actions">
               <button
                 className="btn btn--ghost"
                 disabled={submitting}
@@ -427,74 +435,79 @@ const Requests: React.FC = () => {
         )}
 
         {/* Owner grouped requests by book */}
-        {Object.keys(requests).length === 0 ? (
+        {!hasCompose && (Object.keys(requests).length === 0 ? (
           <p>No requests yet.</p>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className="requests-list">
             {Object.entries(requests).map(([bookId, group]) => (
-              <div key={bookId} className="card" style={{ padding: 16 }}>
-                <h2 className="h2" style={{ marginTop: 0 }}>{group.title}</h2>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div key={bookId} className="card request-group">
+                <div className="message-thread-header">{group.title}</div>
+                <div className="requests-list">
                   {group.items.map((it) => (
-                    <div key={it.id} className="card" style={{ padding: 12 }}>
-                      <SingleBookReq
-                        bookTitle={it.bookTitle}
-                        requesterName={it.requesterName}
-                        periodFrom={it.periodFrom ?? null}
-                        periodTo={it.periodTo ?? null}
-                        createdAt={new Date(it.createdAt).toLocaleString()}
-                      />
-                      {acceptedByBook[it.bookId]?.threadId === it.threadId ? (
-                        <>
-                          <div
-                            style={{
-                              alignSelf: 'flex-start',
-                              background: '#d1fae5',
-                              border: '1px solid #34d399',
-                              color: '#065f46',
-                              padding: '2px 10px',
-                              borderRadius: 9999,
-                              fontSize: 12,
-                              fontWeight: 700,
-                              marginBottom: 8
-                            }}
-                          >
-                            {t('requests.currentBorrower') || 'Current borrower'}
-                          </div>
-                        <FinishedRent
-                          bookId={it.bookId}
-                          threadId={it.threadId}
-                          onDone={async () => {
-                            await refreshAfterFinish(it.bookId, it.threadId);
-                          }}
-                        />
-                        </>
-                      ) : (
-                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
-                          <button
-                            className="btn"
-                            disabled={submitting || !!activeRentByBook[it.bookId] || !!disabledThreads[it.threadId]}
-                            title={
-                              activeRentByBook[it.bookId]
-                                ? 'Book already rented'
-                                : (disabledThreads[it.threadId] ? 'This request already completed' : undefined)
-                            }
-                            onClick={() => handleAgree(it)}
-                          >
-                            {t('messages.agree')}
-                          </button>
-                          <button className="btn btn--ghost" disabled={submitting} onClick={() => handleDisagree(it)}>
-                            {t('messages.disagree')}
-                          </button>
+                    <div key={it.id} className="request-item">
+                      <div className="message-avatar">
+                        {(it.requesterName || 'U')
+                          .split(' ')
+                          .filter(Boolean)
+                          .slice(0, 2)
+                          .map(part => part.charAt(0).toUpperCase())
+                          .join('')}
+                      </div>
+                      <div className="message-content">
+                        <div className="message-header">
+                          <div className="message-sender">{it.requesterName || 'User'}</div>
+                          <div className="message-time">{new Date(it.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
                         </div>
-                      )}
+                        <div className="message-body" style={{ marginTop: 6 }}>
+                          <SingleBookReq
+                            bookTitle={it.bookTitle}
+                            requesterName={it.requesterName}
+                            periodFrom={it.periodFrom ?? null}
+                            periodTo={it.periodTo ?? null}
+                            createdAt={new Date(it.createdAt).toLocaleString()}
+                          />
+                        </div>
+                        {acceptedByBook[it.bookId]?.threadId === it.threadId ? (
+                          <>
+                            <div className="request-chip request-chip--success">{t('requests.currentBorrower') || 'Current borrower'}</div>
+                            <FinishedRent
+                              bookId={it.bookId}
+                              threadId={it.threadId}
+                              onDone={async () => {
+                                await refreshAfterFinish(it.bookId, it.threadId);
+                            if (onRefreshBooks) {
+                              await onRefreshBooks();
+                            }
+                              }}
+                            />
+                          </>
+                        ) : (
+                          <div className="request-actions">
+                            <button
+                              className="btn"
+                              disabled={submitting || !!activeRentByBook[it.bookId] || !!disabledThreads[it.threadId]}
+                              title={
+                                activeRentByBook[it.bookId]
+                                  ? 'Book already rented'
+                                  : (disabledThreads[it.threadId] ? 'This request already completed' : undefined)
+                              }
+                              onClick={() => handleAgree(it)}
+                            >
+                              {t('messages.agree')}
+                            </button>
+                            <button className="btn btn--ghost" disabled={submitting} onClick={() => handleDisagree(it)}>
+                              {t('messages.disagree')}
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
             ))}
           </div>
-        )}
+        ))}
       </div>
     </section>
   );
