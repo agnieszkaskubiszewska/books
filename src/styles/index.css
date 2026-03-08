@@ -1359,3 +1359,43 @@ body { font-family: "MyFont", system-ui, -apple-system, Segoe UI, Roboto, sans-s
 .request-error { color:#b91c1c; margin-bottom: 8px; }
 .request-compose__dates { display:flex; gap:12px; flex-wrap:wrap; }
 .request-date { min-width: 220px; }
+
+/* Page wrapper for requests to stack blocks vertically */
+.requests-page { display:flex; flex-direction:column; gap:16px; width:100%; }
+.requests-calendar { margin-bottom: 16px; }
+
+/* Requests grid (max 4 in a row) */
+.requests-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+@media (max-width: 1200px) {
+  .requests-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 900px) {
+  .requests-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 600px) {
+  .requests-grid { grid-template-columns: 1fr; }
+}
+
+.request-card.card {
+  padding: 12px;
+  border-radius: 16px;
+}
+.request-header {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.request-avatar {
+  width: 40px; height: 40px; border-radius: 999px;
+  background: #8a5a3a; color: #fff; display:flex; align-items:center; justify-content:center;
+  font-weight: 700; font-size: 0.95rem;
+}
+.request-title { display:flex; flex-direction:column; gap: 2px; }
+.requester-name { font-weight: 800; color: #0f1720; font-size: 1rem; }
+.request-meta { color: #7a8a99; font-weight: 600; font-size: 12px; }
+.request-body { margin-top: 6px; }

@@ -6,6 +6,16 @@ import { useTranslation } from 'react-i18next';
 import { supabase, getOrCreateThread as sbGetOrCreateThread, sendMessage as sbSendMessage, createRent as sbCreateRent } from '../supabase';
 import SingleBookReq from './SingleBookReq';
 import FinishedRent from './FinishedRent';
+const DayPilotSchedulerLazy = (React.lazy(async () => {
+  try {
+    const mod: any = await import('@daypilot/daypilot-lite-react');
+    const Cmp = mod.DayPilotScheduler ?? mod?.default?.DayPilotScheduler;
+    // Return a component; props will be typed as any via outer cast
+    return { default: (Cmp ?? (() => null)) as React.ComponentType<any> };
+  } catch {
+    return { default: (() => null) as React.ComponentType<any> };
+  }
+}) as unknown) as React.ComponentType<any>;
 
 type RequestItem = {
   id: string;
@@ -81,6 +91,10 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
+  // Owner calendar state
+  const [calResources, setCalResources] = React.useState<Array<{ name: string; id: string }>>([]);
+  const [calEvents, setCalEvents] = React.useState<Array<{ id: string; start: string; end: string; resource: string; text: string }>>([]);
+
   async function handleAgree(it: RequestItem) {
     try {
       setSubmitting(true);
@@ -133,6 +147,7 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
       if (onRefreshBooks) {
         await onRefreshBooks();
       }
+      await refreshOwnerCalendar(); // reflect in calendar
       // keep request in list; for accepted borrower show finish controls
     } catch (e: any) {
       setError(e?.message ?? 'Failed to agree');
@@ -220,6 +235,14 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
   React.useEffect(() => {
     (async () => {
       try {
+        const composing = !!searchParams.get('to') && !!searchParams.get('book');
+        if (composing) {
+          setRequests({});
+          setActiveRentByBook({});
+          setAcceptedByBook({});
+          setDisabledThreads({});
+          return;
+        }
         const { data: auth } = await supabase.auth.getUser();
         const currentUserId = auth.user?.id;
         if (!currentUserId) { setRequests({}); return; }
@@ -339,6 +362,54 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
     })();
   }, [searchParams]);
 
+  // Build/refresh owner calendar (active rents per owned book)
+  const refreshOwnerCalendar = React.useCallback(async () => {
+    try {
+      const { data: auth } = await supabase.auth.getUser();
+      const currentUserId = auth.user?.id;
+      if (!currentUserId) { setCalResources([]); setCalEvents([]); return; }
+      const { data: rentsRows } = await supabase
+        .from('rents')
+        .select('book_id, borrower, rent_from, rent_to, finished')
+        .eq('book_owner', currentUserId)
+        .eq('finished', false);
+      const rents = rentsRows || [];
+      const bookIds = Array.from(new Set(rents.map((r: any) => String(r.book_id))));
+      const borrowerIds = Array.from(new Set(rents.map((r: any) => String(r.borrower))));
+      const [{ data: booksRows }, { data: usersRows }] = await Promise.all([
+        (bookIds.length ? supabase.from('books').select('id, title').in('id', bookIds) : Promise.resolve({ data: [] as any })),
+        (borrowerIds.length ? supabase.from('users').select('id, first_name, last_name, email').in('id', borrowerIds) : Promise.resolve({ data: [] as any })),
+      ]) as any;
+      const bookIdToTitle = new Map<string, string>((booksRows || []).map((b: any) => [String(b.id), String(b.title ?? '')]));
+      const userIdToName = new Map<string, string>((usersRows || []).map((u: any) => {
+        const first = (u.first_name || '').trim();
+        const last = (u.last_name || '').trim();
+        const full = [first, last].filter(Boolean).join(' ');
+        const fallback = (u.email || '').split('@')[0] || '';
+        return [String(u.id), full || fallback];
+      }));
+      const resources = bookIds.map(id => ({ id, name: bookIdToTitle.get(id) || id }));
+      const events = rents.map((r: any, idx: number) => {
+        const start = r.rent_from || new Date().toISOString();
+        const end = r.rent_to || new Date(Date.now() + 24 * 3600 * 1000).toISOString();
+        const borrower = userIdToName.get(String(r.borrower)) || 'User';
+        return { id: `${String(r.book_id)}_${idx}`, start, end, resource: String(r.book_id), text: borrower };
+      });
+      setCalResources(resources);
+      setCalEvents(events);
+    } catch {
+      setCalResources([]);
+      setCalEvents([]);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    const composing = !!searchParams.get('to') && !!searchParams.get('book');
+    if (!composing) {
+      refreshOwnerCalendar();
+    }
+  }, [requests, searchParams]);
+
   const handleSubmitRequest = async () => {
     try {
       setSubmitting(true);
@@ -385,6 +456,24 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
         <h1 className="h1">Requests</h1>
       </div>
       <div className="container">
+        <div className="requests-page">
+        {/* Owner calendar (only in owner view) */}
+        {!hasCompose && (
+          <div className="card" style={{ marginBottom: 16 }}>
+            <React.Suspense fallback={<div style={{ padding: 8, color: '#64748b' }}>Loading calendar…</div>}>
+              <DayPilotSchedulerLazy
+                startDate={new Date().toISOString().slice(0, 10)}
+                days={31}
+                scale="Day"
+                timeHeaders={[{ groupBy: 'Month' }, { groupBy: 'Day', format: 'd' }]}
+                resources={calResources}
+                events={calEvents}
+                heightSpec="Max"
+                height={280}
+              />
+            </React.Suspense>
+          </div>
+        )}
         {/* Borrower compose form when opened with ?to=&book= */}
         {hasCompose && (
           <div className="card request-compose">
@@ -434,80 +523,78 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
           </div>
         )}
 
-        {/* Owner grouped requests by book */}
-        {!hasCompose && (Object.keys(requests).length === 0 ? (
-          <p>No requests yet.</p>
-        ) : (
-          <div className="requests-list">
-            {Object.entries(requests).map(([bookId, group]) => (
-              <div key={bookId} className="card request-group">
-                <div className="message-thread-header">{group.title}</div>
-                <div className="requests-list">
-                  {group.items.map((it) => (
-                    <div key={it.id} className="request-item">
-                      <div className="message-avatar">
-                        {(it.requesterName || 'U')
-                          .split(' ')
-                          .filter(Boolean)
-                          .slice(0, 2)
-                          .map(part => part.charAt(0).toUpperCase())
-                          .join('')}
-                      </div>
-                      <div className="message-content">
-                        <div className="message-header">
-                          <div className="message-sender">{it.requesterName || 'User'}</div>
-                          <div className="message-time">{new Date(it.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-                        </div>
-                        <div className="message-body" style={{ marginTop: 6 }}>
-                          <SingleBookReq
-                            bookTitle={it.bookTitle}
-                            requesterName={it.requesterName}
-                            periodFrom={it.periodFrom ?? null}
-                            periodTo={it.periodTo ?? null}
-                            createdAt={new Date(it.createdAt).toLocaleString()}
-                          />
-                        </div>
-                        {acceptedByBook[it.bookId]?.threadId === it.threadId ? (
-                          <>
-                            <div className="request-chip request-chip--success">{t('requests.currentBorrower') || 'Current borrower'}</div>
-                            <FinishedRent
-                              bookId={it.bookId}
-                              threadId={it.threadId}
-                              onDone={async () => {
-                                await refreshAfterFinish(it.bookId, it.threadId);
-                            if (onRefreshBooks) {
-                              await onRefreshBooks();
-                            }
-                              }}
-                            />
-                          </>
-                        ) : (
-                          <div className="request-actions">
-                            <button
-                              className="btn"
-                              disabled={submitting || !!activeRentByBook[it.bookId] || !!disabledThreads[it.threadId]}
-                              title={
-                                activeRentByBook[it.bookId]
-                                  ? 'Book already rented'
-                                  : (disabledThreads[it.threadId] ? 'This request already completed' : undefined)
-                              }
-                              onClick={() => handleAgree(it)}
-                            >
-                              {t('messages.agree')}
-                            </button>
-                            <button className="btn btn--ghost" disabled={submitting} onClick={() => handleDisagree(it)}>
-                              {t('messages.disagree')}
-                            </button>
-                          </div>
-                        )}
+        {/* Owner requests as compact grid (max 4 per row) */}
+        {!hasCompose && (() => {
+          const flatItems: RequestItem[] = Object.values(requests).flatMap(g => g.items);
+          if (flatItems.length === 0) return <p>No requests yet.</p>;
+          return (
+            <div className="requests-grid">
+              {flatItems.map((it) => (
+                <div key={it.id} className="request-card card">
+                  <div className="request-header">
+                    <div className="request-avatar">
+                      {(it.requesterName || 'U')
+                        .split(' ')
+                        .filter(Boolean)
+                        .slice(0, 2)
+                        .map(part => part.charAt(0).toUpperCase())
+                        .join('')}
+                    </div>
+                    <div className="request-title">
+                      <div className="requester-name">{it.requesterName || 'User'}</div>
+                      <div className="request-meta">
+                        {new Date(it.createdAt).toLocaleString()}
                       </div>
                     </div>
-                  ))}
+                  </div>
+                  <div className="request-body">
+                    <SingleBookReq
+                      bookTitle={it.bookTitle}
+                      requesterName={it.requesterName}
+                      periodFrom={it.periodFrom ?? null}
+                      periodTo={it.periodTo ?? null}
+                      createdAt={new Date(it.createdAt).toLocaleString()}
+                    />
+                  </div>
+                  {acceptedByBook[it.bookId]?.threadId === it.threadId ? (
+                    <>
+                      <div className="request-chip request-chip--success">
+                        {t('requests.currentBorrower') || 'Current borrower'}
+                      </div>
+                      <FinishedRent
+                        bookId={it.bookId}
+                        threadId={it.threadId}
+                        onDone={async () => {
+                          await refreshAfterFinish(it.bookId, it.threadId);
+                          if (onRefreshBooks) await onRefreshBooks();
+                        }}
+                      />
+                    </>
+                  ) : (
+                    <div className="request-actions">
+                      <button
+                        className="btn"
+                        disabled={submitting || !!activeRentByBook[it.bookId] || !!disabledThreads[it.threadId]}
+                        title={
+                          activeRentByBook[it.bookId]
+                            ? 'Book already rented'
+                            : (disabledThreads[it.threadId] ? 'This request already completed' : undefined)
+                        }
+                        onClick={() => handleAgree(it)}
+                      >
+                        {t('messages.agree')}
+                      </button>
+                      <button className="btn btn--ghost" disabled={submitting} onClick={() => handleDisagree(it)}>
+                        {t('messages.disagree')}
+                      </button>
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
-          </div>
-        ))}
+              ))}
+            </div>
+          );
+        })()}
+        </div>
       </div>
     </section>
   );
