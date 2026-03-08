@@ -16,6 +16,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@daypilot/daypilot-lite-react": "^5.4.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@lingui/cli": "^4.14.1",
