@@ -321,6 +321,40 @@ const AppContent: React.FC = () => {
     return merged;
   }, [activeRentDatesByBook, requestedRentDates, threadBookIds]);
 
+  // Zablokuj ponowne wysyłanie prośby o tę samą książkę przez tego samego użytkownika, dopóki owner nie zdecyduje
+  const pendingRequestBookIds = useMemo(() => {
+    try {
+      if (!currentUserId) return new Set<string>();
+      // zgrupuj wiadomości per wątek
+      const byThread = new Map<string, { createdAt: number; body: string; senderId: string }[]>();
+      (dbMessages || []).forEach(m => {
+        const key = (m.thread_id ?? m.id) as string;
+        const arr = byThread.get(key) || [];
+        arr.push({ createdAt: new Date(m.created_at).getTime(), body: String(m.body || ''), senderId: String(m.sender_id || '') });
+        byThread.set(key, arr);
+      });
+      const pending = new Set<string>();
+      byThread.forEach((arr, threadKey) => {
+        const bookId = threadBookIds[threadKey];
+        if (!bookId) return;
+        // posortuj rosnąco
+        arr.sort((a, b) => a.createdAt - b.createdAt);
+        const hasMyRequest = arr.find(x => x.senderId === currentUserId && x.body.startsWith('!system: Requested rent period'));
+        if (!hasMyRequest) return;
+        const afterReq = arr.filter(x => x.createdAt > hasMyRequest.createdAt);
+        const hasDecision = afterReq.some(x =>
+          x.body.startsWith('!system: Owner agreed') || x.body.startsWith('!system: Owner refused')
+        );
+        if (!hasDecision) {
+          pending.add(String(bookId));
+        }
+      });
+      return pending;
+    } catch {
+      return new Set<string>();
+    }
+  }, [dbMessages, threadBookIds, currentUserId]);
+
   const addBook = async (book: Omit<Book, 'id'>) => {
     try {
       const { data, error } = await supabase
@@ -654,6 +688,7 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
         onRent={rentBook}
         isAdmin={isAdmin}
         requestedRentDates={requestedRentDatesMergedByBook}
+        pendingRequestBookIds={pendingRequestBookIds}
       />
     } />
           <Route path="/user-details" element={isLoggedIn && user ? <UserDetails user={user} /> : <Navigate to="/login" />} />

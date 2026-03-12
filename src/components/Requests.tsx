@@ -50,6 +50,7 @@ interface RequestsProps {
 const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [viewMode, setViewMode] = React.useState<'toMe' | 'mine' | 'archived'>('toMe');
   const [rentFrom, setRentFrom] = React.useState<Dayjs | null>(null);
   const [rentTo, setRentTo] = React.useState<Dayjs | null>(null);
   const [rentFromMin, setRentFromMin] = React.useState<Dayjs | null>(null);
@@ -59,6 +60,7 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
   const [activeRentByBook, setActiveRentByBook] = React.useState<Record<string, boolean>>({});
   const [acceptedByBook, setAcceptedByBook] = React.useState<Record<string, { threadId: string; requesterId: string; requesterName: string }>>({});
   const [disabledThreads, setDisabledThreads] = React.useState<Record<string, boolean>>({});
+  const [archivedThreads, setArchivedThreads] = React.useState<Record<string, boolean>>({});
 
   // Borrower flow: compute min date based on active rent
   React.useEffect(() => {
@@ -94,6 +96,93 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
   // Owner calendar state
   const [calResources, setCalResources] = React.useState<Array<{ name: string; id: string }>>([]);
   const [calEvents, setCalEvents] = React.useState<Array<{ id: string; start: string; end: string; resource: string; text: string }>>([]);
+  // Borrower: my requests
+  const [myRequests, setMyRequests] = React.useState<RequestItem[]>([]);
+  const [myArchivedThreads, setMyArchivedThreads] = React.useState<Record<string, boolean>>({});
+
+  // Borrower view: fetch my own requests (messages I sent with requested period)
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const { data: auth } = await supabase.auth.getUser();
+        const currentUserId = auth.user?.id;
+        if (!currentUserId) { setMyRequests([]); return; }
+        const { data: msgs, error: msgErr } = await supabase
+          .from('messages')
+          .select('id, sender_id, recipient_id, body, thread_id, created_at')
+          .ilike('body', '!system: Requested rent period%')
+          .eq('sender_id', currentUserId)
+          .order('created_at', { ascending: false });
+        if (msgErr) { setMyRequests([]); return; }
+        const list = msgs || [];
+        if (list.length === 0) { setMyRequests([]); return; }
+        const threadIds = Array.from(new Set(list.map(m => m.thread_id).filter(Boolean))) as string[];
+        const { data: threads, error: thErr } = await supabase
+          .from('threads')
+          .select('id, book_id, owner_id')
+          .in('id', threadIds);
+        if (thErr) { setMyRequests([]); return; }
+        const bookIds = Array.from(new Set((threads || []).map((t: any) => String(t.book_id)).filter(Boolean)));
+        const ownerIds = Array.from(new Set((threads || []).map((t: any) => String(t.owner_id)).filter(Boolean)));
+        const [{ data: booksRows }, { data: ownersRows }] = await Promise.all([
+          (bookIds.length ? supabase.from('books').select('id, title').in('id', bookIds) : Promise.resolve({ data: [] as any })),
+          (ownerIds.length ? supabase.from('users').select('id, first_name, last_name, email').in('id', ownerIds) : Promise.resolve({ data: [] as any })),
+        ]) as any;
+        const threadToBook = new Map<string, string>((threads || []).map((t: any) => [String(t.id), String(t.book_id)]));
+        const bookIdToTitle = new Map<string, string>((booksRows || []).map((b: any) => [String(b.id), String(b.title ?? '')]));
+        const ownerIdToName = new Map<string, string>((ownersRows || []).map((u: any) => {
+          const first = (u.first_name || '').trim();
+          const last = (u.last_name || '').trim();
+          const full = [first, last].filter(Boolean).join(' ');
+          const fallback = (u.email || '').split('@')[0] || '';
+          return [String(u.id), full || fallback];
+        }));
+        const mine: RequestItem[] = list.map((m: any) => {
+          const threadId = String(m.thread_id);
+          const bookId = threadToBook.get(threadId);
+          const title = (bookId && bookIdToTitle.get(bookId)) || '';
+          const pr = parseRequestedPeriod(String(m.body || ''));
+          return {
+            id: String(m.id),
+            threadId,
+            bookId: bookId || '',
+            bookTitle: title,
+            requesterId: String(m.sender_id),
+            requesterName: ownerIdToName.get(String(m.recipient_id)) || 'Owner',
+            periodFrom: pr.from ?? null,
+            periodTo: pr.to ?? null,
+            createdAt: String(m.created_at),
+          };
+        }).filter(it => !!it.bookId);
+        setMyRequests(mine);
+        // wykryj archiwalne wątki (odrzucone lub zakończone) po stronie borrower
+        const tIds = Array.from(new Set(mine.map(m => m.threadId)));
+        if (tIds.length > 0) {
+          const { data: sysMsgs } = await supabase
+            .from('messages')
+            .select('thread_id, body')
+            .in('thread_id', tIds);
+          const map: Record<string, boolean> = {};
+          (sysMsgs || []).forEach((m: any) => {
+            const body = String(m.body || '');
+            if (
+              body.startsWith('Owner nie wyraził zgody') || // PL odmowa
+              body.startsWith('!system: Owner refused') ||  // EN fallback
+              body.startsWith('!system: Owner confirmed')   // EN zakończenie/zwrot fallback
+            ) {
+              map[String(m.thread_id)] = true;
+            }
+          });
+          setMyArchivedThreads(map);
+        } else {
+          setMyArchivedThreads({});
+        }
+      } catch {
+        setMyRequests([]);
+        setMyArchivedThreads({});
+      }
+    })();
+  }, [searchParams]);
 
   async function handleAgree(it: RequestItem) {
     try {
@@ -170,13 +259,13 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
         body: systemBody,
         threadId: it.threadId
       });
-      setRequests(prev => {
-        const next = { ...prev };
-        const group = next[it.bookId];
-        if (group) {
-          group.items = group.items.filter(x => x.id !== it.id);
-          if (group.items.length === 0) delete next[it.bookId];
-        }
+      // oznacz wątek jako zarchiwizowany (przeniesie się do zakładki "Zarchiwizowane")
+      setArchivedThreads(prev => {
+        const next = { ...prev, [it.threadId]: true };
+        try {
+          const ids = Object.entries(next).filter(([, v]) => !!v).map(([k]) => k);
+          localStorage.setItem('req_archived_threads', JSON.stringify(ids));
+        } catch {}
         return next;
       });
     } catch (e: any) {
@@ -212,6 +301,15 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
         } catch {}
         return next;
       });
+      // oznacz jako zarchiwizowany
+      setArchivedThreads(prev => {
+        const next = { ...prev, [threadId]: true };
+        try {
+          const ids = Object.entries(next).filter(([, v]) => !!v).map(([k]) => k);
+          localStorage.setItem('req_archived_threads', JSON.stringify(ids));
+        } catch {}
+        return next;
+      });
     } catch {
       // w razie błędu po prostu spróbuj odblokować – UI i tak odświeży się przy kolejnym wejściu
       setActiveRentByBook(prev => ({ ...prev, [bookId]: false }));
@@ -228,6 +326,14 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
         } catch {}
         return next;
       });
+      setArchivedThreads(prev => {
+        const next = { ...prev, [threadId]: true };
+        try {
+          const ids = Object.entries(next).filter(([, v]) => !!v).map(([k]) => k);
+          localStorage.setItem('req_archived_threads', JSON.stringify(ids));
+        } catch {}
+        return next;
+      });
     }
   }
 
@@ -241,6 +347,7 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
           setActiveRentByBook({});
           setAcceptedByBook({});
           setDisabledThreads({});
+          setArchivedThreads({});
           return;
         }
         const { data: auth } = await supabase.auth.getUser();
@@ -351,10 +458,24 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
           } catch {
             setDisabledThreads({});
           }
+          // restore archived threads similarly (only for visible)
+          try {
+            const rawA = localStorage.getItem('req_archived_threads');
+            const savedA = rawA ? (JSON.parse(rawA) as string[]) : [];
+            const visible = new Set<string>(
+              Object.values(grouped).flatMap(g => g.items.map(it => it.threadId))
+            );
+            const restoredA: Record<string, boolean> = {};
+            (savedA || []).forEach((tid: string) => { if (visible.has(tid)) restoredA[tid] = true; });
+            setArchivedThreads(restoredA);
+          } catch {
+            setArchivedThreads({});
+          }
         } else {
           setActiveRentByBook({});
           setAcceptedByBook({});
           setDisabledThreads({});
+          setArchivedThreads({});
         }
       } catch {
         setRequests({});
@@ -453,14 +574,45 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
   return (
     <section className="section">
       <div className="container hero messages-hero">
-        <h1 className="h1">Requests</h1>
+        <h1 className="h1">{t('requests.title') || 'Requests'}</h1>
       </div>
       <div className="container">
         <div className="requests-page">
-        {/* Owner calendar (only in owner view) */}
-        {!hasCompose && (
+          {/* View toggle (only when not composing) */}
+          {!hasCompose && (
+            <div className="filter-group compact" style={{ alignSelf: 'flex-end' }}>
+              <div className="toggle-group" role="tablist" aria-label="Requests view">
+                <button
+                  type="button"
+                  className={`toggle-pill toggle-pill--sm ${viewMode === 'toMe' ? 'active' : ''}`}
+                  aria-pressed={viewMode === 'toMe'}
+                  onClick={() => setViewMode('toMe')}
+                >
+                  {t('requests.toMe') || 'Requests to me'}
+                </button>
+                <button
+                  type="button"
+                  className={`toggle-pill toggle-pill--sm ${viewMode === 'mine' ? 'active' : ''}`}
+                  aria-pressed={viewMode === 'mine'}
+                  onClick={() => setViewMode('mine')}
+                >
+                  {t('requests.mine') || 'My requests'}
+                </button>
+                <button
+                  type="button"
+                  className={`toggle-pill toggle-pill--sm ${viewMode === 'archived' ? 'active' : ''}`}
+                  aria-pressed={viewMode === 'archived'}
+                  onClick={() => setViewMode('archived')}
+                >
+                  {t('requests.archivedTab') || 'Archived'}
+                </button>
+              </div>
+            </div>
+          )}
+          {/* Owner calendar (only in owner view) */}
+          {!hasCompose && viewMode === 'toMe' && (
           <div className="card" style={{ marginBottom: 16 }}>
-            <React.Suspense fallback={<div style={{ padding: 8, color: '#64748b' }}>Loading calendar…</div>}>
+            <React.Suspense fallback={<div style={{ padding: 8, color: '#64748b' }}>{t('requests.loadingCalendar') || 'Loading calendar…'}</div>}>
               <DayPilotSchedulerLazy
                 startDate={new Date().toISOString().slice(0, 10)}
                 days={31}
@@ -524,9 +676,10 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
         )}
 
         {/* Owner requests as compact grid (max 4 per row) */}
-        {!hasCompose && (() => {
-          const flatItems: RequestItem[] = Object.values(requests).flatMap(g => g.items);
-          if (flatItems.length === 0) return <p>No requests yet.</p>;
+        {!hasCompose && viewMode === 'toMe' && (() => {
+          const allItems: RequestItem[] = Object.values(requests).flatMap(g => g.items);
+          const flatItems = allItems.filter(it => !archivedThreads[it.threadId]);
+          if (flatItems.length === 0) return <p>{t('requests.noRequests') || 'No requests yet.'}</p>;
           return (
             <div className="requests-grid">
               {flatItems.map((it) => (
@@ -570,6 +723,10 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
                         }}
                       />
                     </>
+                  ) : disabledThreads[it.threadId] ? (
+                    <div className="request-chip request-chip--archived">
+                      {t('requests.archived') || 'Archived request'}
+                    </div>
                   ) : (
                     <div className="request-actions">
                       <button
@@ -577,8 +734,8 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
                         disabled={submitting || !!activeRentByBook[it.bookId] || !!disabledThreads[it.threadId]}
                         title={
                           activeRentByBook[it.bookId]
-                            ? 'Book already rented'
-                            : (disabledThreads[it.threadId] ? 'This request already completed' : undefined)
+                            ? (t('requests.bookAlreadyRented') || 'Book already rented')
+                            : (disabledThreads[it.threadId] ? (t('requests.requestCompleted') || 'This request already completed') : undefined)
                         }
                         onClick={() => handleAgree(it)}
                       >
@@ -589,6 +746,87 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
                       </button>
                     </div>
                   )}
+                </div>
+              ))}
+            </div>
+          );
+        })()}
+        {/* My requests (borrower) as compact grid */}
+        {!hasCompose && viewMode === 'mine' && (() => {
+          const flatItems = myRequests.filter(it => !myArchivedThreads[it.threadId]);
+          if (flatItems.length === 0) return <p>{t('requests.noRequests') || 'No requests yet.'}</p>;
+          return (
+            <div className="requests-grid">
+              {flatItems.map((it) => (
+                <div key={it.id} className="request-card card">
+                  <div className="request-header">
+                    <div className="request-avatar">
+                      {(it.requesterName || 'O')
+                        .split(' ')
+                        .filter(Boolean)
+                        .slice(0, 2)
+                        .map(part => part.charAt(0).toUpperCase())
+                        .join('')}
+                    </div>
+                    <div className="request-title">
+                      <div className="requester-name">{it.requesterName || 'Owner'}</div>
+                      <div className="request-meta">{new Date(it.createdAt).toLocaleString()}</div>
+                    </div>
+                  </div>
+                  <div className="request-body">
+                    <SingleBookReq
+                      bookTitle={it.bookTitle}
+                      requesterName={it.requesterName}
+                      periodFrom={it.periodFrom ?? null}
+                      periodTo={it.periodTo ?? null}
+                      createdAt={new Date(it.createdAt).toLocaleString()}
+                      isMine
+                    />
+                  </div>
+                  <div className="request-actions" />
+                </div>
+              ))}
+            </div>
+          );
+        })()}
+        {/* Archived grid (refused or returned) */}
+        {!hasCompose && viewMode === 'archived' && (() => {
+          const ownerArchived = Object.values(requests).flatMap(g => g.items).filter(it => archivedThreads[it.threadId] || disabledThreads[it.threadId]);
+          const mineArchived = myRequests.filter(it => myArchivedThreads[it.threadId]);
+          const flatItems = [...ownerArchived, ...mineArchived];
+          if (flatItems.length === 0) return <p>{t('requests.noRequests') || 'No requests yet.'}</p>;
+          return (
+            <div className="requests-grid">
+              {flatItems.map((it) => (
+                <div key={`${it.id}-arch`} className="request-card card">
+                  <div className="request-header">
+                    <div className="request-avatar">
+                      {(it.requesterName || 'U')
+                        .split(' ')
+                        .filter(Boolean)
+                        .slice(0, 2)
+                        .map(part => part.charAt(0).toUpperCase())
+                        .join('')}
+                    </div>
+                    <div className="request-title">
+                      <div className="requester-name">{it.requesterName || 'User'}</div>
+                      <div className="request-meta">
+                        {new Date(it.createdAt).toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="request-body">
+                    <SingleBookReq
+                      bookTitle={it.bookTitle}
+                      requesterName={it.requesterName}
+                      periodFrom={it.periodFrom ?? null}
+                      periodTo={it.periodTo ?? null}
+                      createdAt={new Date(it.createdAt).toLocaleString()}
+                    />
+                  </div>
+                  <div className="request-chip request-chip--archived">
+                    {t('requests.archived') || 'Archived request'}
+                  </div>
                 </div>
               ))}
             </div>

@@ -134,7 +134,23 @@
   },
   "requests": {
     "currentBorrower": "Current borrower",
-    "returned": "Returned"
+    "returned": "Returned",
+    "title": "Requests",
+    "noRequests": "No requests yet.",
+    "loadingCalendar": "Loading calendar…",
+    "book": "Requested book",
+    "requester": "Requester",
+    "period": "Period",
+"createdAt": "Created At",
+    "bookAlreadyRented": "Book already rented",
+    "requestCompleted": "This request already completed",
+    "alreadyRequested": "You already requested this book. Please wait for the owner's decision.",
+    "archived": "Archived request",
+    "toMe": "Requests to me",
+    "mine": "My requests",
+    "archivedTab": "Archived",
+    "pending": "Pending",
+    "owner": "Owner"
   },
   "systemMemo": {
     "systemLabel": "System"

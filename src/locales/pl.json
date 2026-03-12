@@ -134,7 +134,23 @@
   },
   "requests": {
     "currentBorrower": "Aktualny wypożyczający",
-    "returned": "Zwrócono"
+    "returned": "Zwrócono",
+    "title": "Prośby o wypożyczenie",
+    "noRequests": "Brak próśb.",
+    "loadingCalendar": "Ładowanie kalendarza…",
+    "book": "Prośba o wypożyczenie książki",
+    "requester": "Wnioskodawca",
+    "period": "Okres",
+    "createdAt": "Utworzono",
+    "bookAlreadyRented": "Książka jest już wypożyczona",
+    "requestCompleted": "Ta prośba została już zakończona",
+    "alreadyRequested": "Już wysłałaś/eś prośbę o tę książkę. Poczekaj na decyzję właściciela.",
+    "archived": "Prośba zarchiwizowana",
+    "toMe": "Prośby do mnie",
+    "mine": "Moje prośby",
+    "archivedTab": "Zarchiwizowane",
+    "pending": "Oczekuje",
+    "owner": "Właściciel"
   },
   "systemMemo": {
     "systemLabel": "System"
