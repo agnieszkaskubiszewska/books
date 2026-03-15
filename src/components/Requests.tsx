@@ -96,6 +96,8 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
   // Owner calendar state
   const [calResources, setCalResources] = React.useState<Array<{ name: string; id: string }>>([]);
   const [calEvents, setCalEvents] = React.useState<Array<{ id: string; start: string; end: string; resource: string; text: string }>>([]);
+  const [isMobile, setIsMobile] = React.useState<boolean>(false);
+  const [highlightBookId, setHighlightBookId] = React.useState<string | null>(null);
   // Borrower: my requests
   const [myRequests, setMyRequests] = React.useState<RequestItem[]>([]);
   const [myArchivedThreads, setMyArchivedThreads] = React.useState<Record<string, boolean>>({});
@@ -510,11 +512,16 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
         return [String(u.id), full || fallback];
       }));
       const resources = bookIds.map(id => ({ id, name: bookIdToTitle.get(id) || id }));
+      const now = new Date();
       const events = rents.map((r: any, idx: number) => {
         const start = r.rent_from || new Date().toISOString();
         const end = r.rent_to || new Date(Date.now() + 24 * 3600 * 1000).toISOString();
         const borrower = userIdToName.get(String(r.borrower)) || 'User';
-        return { id: `${String(r.book_id)}_${idx}`, start, end, resource: String(r.book_id), text: borrower };
+        const startDate = new Date(start);
+        const endDate = new Date(end);
+        const isActive = startDate <= now && now < endDate;
+        const cssClass = isActive ? 'dp-event--active' : 'dp-event--upcoming';
+        return { id: `${String(r.book_id)}_${idx}`, start, end, resource: String(r.book_id), text: borrower, cssClass } as any;
       });
       setCalResources(resources);
       setCalEvents(events);
@@ -530,6 +537,15 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
       refreshOwnerCalendar();
     }
   }, [requests, searchParams]);
+
+  // Responsive: switch to list on mobile
+  React.useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    const apply = () => setIsMobile(mq.matches);
+    apply();
+    mq.addEventListener?.('change', apply);
+    return () => mq.removeEventListener?.('change', apply);
+  }, []);
 
   const handleSubmitRequest = async () => {
     try {
@@ -612,18 +628,54 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
           {/* Owner calendar (only in owner view) */}
           {!hasCompose && viewMode === 'toMe' && (
           <div className="card" style={{ marginBottom: 16 }}>
-            <React.Suspense fallback={<div style={{ padding: 8, color: '#64748b' }}>{t('requests.loadingCalendar') || 'Loading calendar…'}</div>}>
-              <DayPilotSchedulerLazy
-                startDate={new Date().toISOString().slice(0, 10)}
-                days={31}
-                scale="Day"
-                timeHeaders={[{ groupBy: 'Month' }, { groupBy: 'Day', format: 'd' }]}
-                resources={calResources}
-                events={calEvents}
-                heightSpec="Max"
-                height={280}
-              />
-            </React.Suspense>
+            {!isMobile ? (
+              <React.Suspense fallback={<div style={{ padding: 8, color: '#64748b' }}>{t('requests.loadingCalendar') || 'Loading calendar…'}</div>}>
+                <DayPilotSchedulerLazy
+                  startDate={new Date().toISOString().slice(0, 10)}
+                  days={31}
+                  scale="Day"
+                  timeHeaders={[{ groupBy: 'Month' }, { groupBy: 'Day', format: 'd' }]}
+                  resources={calResources}
+                  events={calEvents}
+                  rowHeaderWidth={260}
+                  rowHeaderWidthAutoFit={true}
+                  locale={(typeof (t as any).i18n?.language === 'string' && (t as any).i18n.language.startsWith('pl')) ? 'pl-pl' : 'en-us'}
+                  onEventClick={(args: any) => {
+                    const bookId = String(args?.e?.data?.resource || '');
+                    if (bookId) {
+                      setViewMode('toMe');
+                      setHighlightBookId(bookId);
+                      window.setTimeout(() => setHighlightBookId(null), 2000);
+                    }
+                  }}
+                />
+              </React.Suspense>
+            ) : (
+              <div className="calendar-list">
+                {calEvents.length === 0 ? (
+                  <p style={{ color: '#64748b' }}>{t('requests.noRequests') || 'No requests yet.'}</p>
+                ) : (
+                  <ul className="calendar-list__items">
+                    {calEvents.map((ev: any) => {
+                      const resName = calResources.find(r => r.id === ev.resource)?.name || ev.resource;
+                      return (
+                        <li key={ev.id} className={`calendar-list__item ${ev.cssClass || ''}`} onClick={() => {
+                          setViewMode('toMe');
+                          setHighlightBookId(String(ev.resource));
+                          window.setTimeout(() => setHighlightBookId(null), 2000);
+                        }}>
+                          <div className="calendar-list__title">{resName}</div>
+                          <div className="calendar-list__meta">
+                            {new Date(ev.start).toLocaleDateString()} – {new Date(ev.end).toLocaleDateString()}
+                          </div>
+                          <div className="calendar-list__borrower">{ev.text}</div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            )}
           </div>
         )}
         {/* Borrower compose form when opened with ?to=&book= */}
@@ -683,7 +735,11 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
           return (
             <div className="requests-grid">
               {flatItems.map((it) => (
-                <div key={it.id} className="request-card card">
+                <div
+                  key={it.id}
+                  className={`request-card card ${highlightBookId === it.bookId ? 'request-card--highlight' : ''}`}
+                  data-book-id={it.bookId}
+                >
                   <div className="request-header">
                     <div className="request-avatar">
                       {(it.requesterName || 'U')
