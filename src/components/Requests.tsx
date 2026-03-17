@@ -158,21 +158,30 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
         }).filter(it => !!it.bookId);
         setMyRequests(mine);
         // wykryj archiwalne wątki (odrzucone lub zakończone) po stronie borrower
+        // UWAGA: liczy się kolejność czasowa - archiwalne TYLKO jeśli decyzja ownera jest PO najnowszej prośbie
         const tIds = Array.from(new Set(mine.map(m => m.threadId)));
         if (tIds.length > 0) {
           const { data: sysMsgs } = await supabase
             .from('messages')
-            .select('thread_id, body')
+            .select('thread_id, body, created_at')
             .in('thread_id', tIds);
+          const latestReqAt: Record<string, number> = {};
+          mine.forEach(m => {
+            const at = new Date(m.createdAt).getTime();
+            latestReqAt[m.threadId] = Math.max(latestReqAt[m.threadId] || 0, at);
+          });
+          const isDecision = (b: string) =>
+            b.startsWith('Owner nie wyraził zgody') ||
+            b.startsWith('Owner zgodził się') ||
+            b.startsWith('!system: Owner refused') ||
+            b.startsWith('!system: Owner confirmed');
           const map: Record<string, boolean> = {};
           (sysMsgs || []).forEach((m: any) => {
             const body = String(m.body || '');
-            if (
-              body.startsWith('Owner nie wyraził zgody') || // PL odmowa
-              body.startsWith('!system: Owner refused') ||  // EN fallback
-              body.startsWith('!system: Owner confirmed')   // EN zakończenie/zwrot fallback
-            ) {
-              map[String(m.thread_id)] = true;
+            const at = new Date(m.created_at).getTime();
+            const tid = String(m.thread_id);
+            if (isDecision(body) && at > (latestReqAt[tid] || 0)) {
+              map[tid] = true;
             }
           });
           setMyArchivedThreads(map);
@@ -294,15 +303,7 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
         delete next[bookId];
         return next;
       });
-      // zablokuj przyciski dla właśnie zakończonego wątku (żeby nie mylić ownera)
-      setDisabledThreads(prev => {
-        const next = { ...prev, [threadId]: true };
-        try {
-          const ids = Object.entries(next).filter(([, v]) => !!v).map(([k]) => k);
-          localStorage.setItem('req_disabled_threads', JSON.stringify(ids));
-        } catch {}
-        return next;
-      });
+      // NIE blokujemy już przycisków dla wątku po zwrocie – nowa prośba ma być możliwa
       // oznacz jako zarchiwizowany
       setArchivedThreads(prev => {
         const next = { ...prev, [threadId]: true };
@@ -456,7 +457,15 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
             );
             const restored: Record<string, boolean> = {};
             (saved || []).forEach((tid: string) => { if (visible.has(tid)) restored[tid] = true; });
+            // Jeśli pojawiły się NOWE prośby w tych wątkach, odblokuj je
+            const requestThreadIds = new Set<string>(Object.values(grouped).flatMap(g => g.items.map(it => it.threadId)));
+            requestThreadIds.forEach(tid => { if (restored[tid]) delete restored[tid]; });
             setDisabledThreads(restored);
+            // zaktualizuj localStorage po czyszczeniu
+            try {
+              const ids = Object.entries(restored).filter(([, v]) => !!v).map(([k]) => k);
+              localStorage.setItem('req_disabled_threads', JSON.stringify(ids));
+            } catch {}
           } catch {
             setDisabledThreads({});
           }
@@ -469,7 +478,14 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
             );
             const restoredA: Record<string, boolean> = {};
             (savedA || []).forEach((tid: string) => { if (visible.has(tid)) restoredA[tid] = true; });
+            // Jeśli mamy świeże prośby w tych wątkach, nie traktuj ich jako archiwalne
+            const requestThreadIds = new Set<string>(Object.values(grouped).flatMap(g => g.items.map(it => it.threadId)));
+            requestThreadIds.forEach(tid => { if (restoredA[tid]) delete restoredA[tid]; });
             setArchivedThreads(restoredA);
+            try {
+              const idsA = Object.entries(restoredA).filter(([, v]) => !!v).map(([k]) => k);
+              localStorage.setItem('req_archived_threads', JSON.stringify(idsA));
+            } catch {}
           } catch {
             setArchivedThreads({});
           }
