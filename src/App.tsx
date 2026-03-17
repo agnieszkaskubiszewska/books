@@ -342,9 +342,15 @@ const AppContent: React.FC = () => {
         const hasMyRequest = arr.find(x => x.senderId === currentUserId && x.body.startsWith('!system: Requested rent period'));
         if (!hasMyRequest) return;
         const afterReq = arr.filter(x => x.createdAt > hasMyRequest.createdAt);
-        const hasDecision = afterReq.some(x =>
-          x.body.startsWith('!system: Owner agreed') || x.body.startsWith('!system: Owner refused')
-        );
+        const hasDecision = afterReq.some(x => {
+          const b = x.body;
+          // Starsze angielskie komunikaty systemowe
+          if (b.startsWith('!system: Owner agreed') || b.startsWith('!system: Owner refused')) return true;
+          // Nowsze polskie komunikaty (bez prefiksu !system)
+          if (b.startsWith('Owner zgodził się')) return true;
+          if (b.startsWith('Owner nie wyraził zgody')) return true;
+          return false;
+        });
         if (!hasDecision) {
           pending.add(String(bookId));
         }
