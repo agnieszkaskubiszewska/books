@@ -512,16 +512,17 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
         return [String(u.id), full || fallback];
       }));
       const resources = bookIds.map(id => ({ id, name: bookIdToTitle.get(id) || id }));
-      const now = new Date();
+      const now = dayjs();
       const events = rents.map((r: any, idx: number) => {
-        const start = r.rent_from || new Date().toISOString();
-        const end = r.rent_to || new Date(Date.now() + 24 * 3600 * 1000).toISOString();
+        const startIso = r.rent_from ? dayjs(r.rent_from).startOf('day').toISOString() : dayjs().startOf('day').toISOString();
+        // DayPilot interpretuje "end" ekskluzywnie – dodaj 1 dzień, by okres był inkluzywny
+        const endIso = r.rent_to ? dayjs(r.rent_to).add(1, 'day').startOf('day').toISOString() : dayjs().add(1, 'day').startOf('day').toISOString();
         const borrower = userIdToName.get(String(r.borrower)) || 'User';
-        const startDate = new Date(start);
-        const endDate = new Date(end);
-        const isActive = startDate <= now && now < endDate;
+        const startDate = dayjs(startIso);
+        const endDate = dayjs(endIso);
+        const isActive = startDate.isBefore(now) && now.isBefore(endDate);
         const cssClass = isActive ? 'dp-event--active' : 'dp-event--upcoming';
-        return { id: `${String(r.book_id)}_${idx}`, start, end, resource: String(r.book_id), text: borrower, cssClass } as any;
+        return { id: `${String(r.book_id)}_${idx}`, start: startIso, end: endIso, resource: String(r.book_id), text: borrower, cssClass } as any;
       });
       setCalResources(resources);
       setCalEvents(events);
@@ -666,7 +667,7 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
                         }}>
                           <div className="calendar-list__title">{resName}</div>
                           <div className="calendar-list__meta">
-                            {new Date(ev.start).toLocaleDateString()} – {new Date(ev.end).toLocaleDateString()}
+                            {dayjs(ev.start).format('YYYY-MM-DD')} – {dayjs(ev.end).subtract(1, 'day').format('YYYY-MM-DD')}
                           </div>
                           <div className="calendar-list__borrower">{ev.text}</div>
                         </li>
