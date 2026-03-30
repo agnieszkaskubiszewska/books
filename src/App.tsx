@@ -37,6 +37,7 @@ const AppContent: React.FC = () => {
   const [requestedRentDates, setRequestedRentDates] = useState<Record<string, { from: string | null; to: string | null }>>({});
   const [userNames, setUserNames] = useState<Record<string, string>>({});
   const [activeRentDatesByBook, setActiveRentDatesByBook] = useState<Record<string, { from: string | null; to: string | null }>>({});
+  const [myRentedBookIds, setMyRentedBookIds] = useState<Set<string>>(new Set());
   const unreadCount = dbMessages
   .filter((m): m is DbMessage => !!m)
   .filter(m => !m.read && m.recipient_id === currentUserId).length;
@@ -243,21 +244,26 @@ const AppContent: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from('rents')
-        .select('book_id, rent_from, rent_to, finished')
+        .select('book_id, rent_from, rent_to, finished, borrower')
         .eq('finished', false);
       if (error) {
         console.error('Error fetching active rents:', error);
         return;
       }
       const byBook: Record<string, { from: string | null; to: string | null }> = {};
+      const myRented = new Set<string>();
       (data || []).forEach((r: any) => {
         const bId = String(r.book_id);
         byBook[bId] = {
           from: r.rent_from ?? null,
           to: r.rent_to ?? null
         };
+        if (r.borrower && r.borrower === currentUserId) {
+          myRented.add(bId);
+        }
       });
       setActiveRentDatesByBook(byBook);
+      setMyRentedBookIds(myRented);
     } catch (err) {
       console.error('Unexpected error fetching rents:', err);
     }
@@ -695,6 +701,7 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
         isAdmin={isAdmin}
         requestedRentDates={requestedRentDatesMergedByBook}
         pendingRequestBookIds={pendingRequestBookIds}
+        myRentedBookIds={myRentedBookIds}
       />
     } />
           <Route path="/user-details" element={isLoggedIn && user ? <UserDetails user={user} /> : <Navigate to="/login" />} />

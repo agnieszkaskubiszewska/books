@@ -145,6 +145,7 @@
     "bookAlreadyRented": "Book already rented",
     "requestCompleted": "This request already completed",
     "alreadyRequested": "You already requested this book. Please wait for the owner's decision.",
+    "alreadyInQueue": "You are already in the queue for this book.",
     "archived": "Archived request",
     "toMe": "Requests to me",
     "mine": "My requests",
