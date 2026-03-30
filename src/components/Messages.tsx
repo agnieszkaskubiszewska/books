@@ -79,7 +79,7 @@ const Messages: React.FC<MessagesProps> = ({ messages, onMarkRead, onSendReply, 
                     color: '#334155'
                   }}
                 >
-{t('books.owner')}: {m.ownerName} — {t('messages.aboutBook')} <strong>{m.bookTitle}</strong>
+{t('messages.aboutBook')} <strong>{m.bookTitle}</strong>
                 </div>
               )}
               
@@ -95,19 +95,18 @@ const Messages: React.FC<MessagesProps> = ({ messages, onMarkRead, onSendReply, 
               
 
               <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                <div className="message-avatar">
-                  {m.senderName
-                    .split(' ')
-                    .filter(Boolean)
-                    .slice(0, 2)
-                    .map(part => part.charAt(0).toUpperCase())
-                    .join('')}
-                </div>
-                <div className="message-content">
-                <div className="message-header">
-                  <div className="message-sender">{m.senderName}</div>
-                  <div className="message-time">{m.time}</div>
-                </div>
+                {(() => {
+                  const isSystemMsg = typeof m.body === 'string' && m.body.startsWith('!system:');
+                  const displayName = isSystemMsg ? t('systemMemo.systemLabel') : m.senderName;
+                  const avatarLabel = isSystemMsg ? 'SYS' : m.senderName.split(' ').filter(Boolean).slice(0, 2).map(p => p.charAt(0).toUpperCase()).join('');
+                  return (
+                    <>
+                      <div className="message-avatar">{avatarLabel}</div>
+                      <div className="message-content">
+                        <div className="message-header">
+                          <div className="message-sender">{displayName}</div>
+                          <div className="message-time">{m.time}</div>
+                        </div>
                 {/* Główna wiadomość: ukryj prefiks !system: i pokaż jako notatkę systemową */}
                 {typeof m.body === 'string' && m.body.startsWith('!system:') ? (
                   (() => {
@@ -183,9 +182,12 @@ const Messages: React.FC<MessagesProps> = ({ messages, onMarkRead, onSendReply, 
                       </div>
                     </div>
                   )}
-                </div>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
-              
+
             </div>
           ))}
           
