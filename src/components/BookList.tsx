@@ -21,9 +21,10 @@ interface BookListProps {
   isAdmin?: boolean;
   requestedRentDates?: Record<string, { from: string | null; to: string | null }>;
   pendingRequestBookIds?: Set<string>;
+  myRentedBookIds?: Set<string>;
 }
 
-const BookList: React.FC<BookListProps> = ({ books, onDeleteBook, isLoggedIn, onRent, isAdmin, requestedRentDates, pendingRequestBookIds }) => {
+const BookList: React.FC<BookListProps> = ({ books, onDeleteBook, isLoggedIn, onRent, isAdmin, requestedRentDates, pendingRequestBookIds, myRentedBookIds }) => {
   const { t } = useTranslation();
   const getGenreName = (genre: Genre): string => {
     // tłumaczenie nazw gatunków przez i18n
@@ -375,8 +376,14 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
   {isLoggedIn && (!book.rent && (
     <button
       className="rent-a book"
-      disabled={!!pendingRequestBookIds?.has(book.id)}
-      title={pendingRequestBookIds?.has(book.id) ? (t('requests.alreadyRequested') as string) : undefined}
+      disabled={!!pendingRequestBookIds?.has(book.id) || !!myRentedBookIds?.has(book.id)}
+      title={
+        myRentedBookIds?.has(book.id)
+          ? (t('requests.alreadyInQueue') as string)
+          : pendingRequestBookIds?.has(book.id)
+          ? (t('requests.alreadyRequested') as string)
+          : undefined
+      }
       onClick={(e) => {
         e.stopPropagation();
         if (book.ownerId) {
