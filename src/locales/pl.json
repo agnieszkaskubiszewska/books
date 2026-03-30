@@ -145,6 +145,7 @@
     "bookAlreadyRented": "Książka jest już wypożyczona",
     "requestCompleted": "Ta prośba została już zakończona",
     "alreadyRequested": "Już wysłałaś/eś prośbę o tę książkę. Poczekaj na decyzję właściciela.",
+    "alreadyInQueue": "Jesteś już w kolejce na tę książkę.",
     "archived": "Prośba zarchiwizowana",
     "toMe": "Prośby do mnie",
     "mine": "Moje prośby",
