@@ -782,9 +782,11 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
                       <FinishedRent
                         bookId={it.bookId}
                         threadId={it.threadId}
-                        onDone={async () => {
-                          await refreshAfterFinish(it.bookId, it.threadId, it.id);
-                          if (onRefreshBooks) await onRefreshBooks();
+                        onDone={() => {
+                          void (async () => {
+                            await refreshAfterFinish(it.bookId, it.threadId, it.id);
+                            if (onRefreshBooks) await onRefreshBooks();
+                          })();
                         }}
                       />
                     </>
