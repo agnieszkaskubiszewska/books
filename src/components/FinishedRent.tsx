@@ -48,7 +48,7 @@ export default function FinishedRent({ threadId, bookId, onDone }: FinishedRentP
       await supabase
         .from('messages')
         .insert([{ sender_id: currentUserId, recipient_id: borrowerId, body: systemBody, thread_id: thread.id }]);
-      onDone?.();
+      await onDone?.();
     } catch (e: any) {
       setError(e?.message ?? 'Failed to finish rent');
     } finally {
@@ -94,7 +94,7 @@ export default function FinishedRent({ threadId, bookId, onDone }: FinishedRentP
       await supabase
         .from('messages')
         .insert([{ sender_id: currentUserId, recipient_id: currentUserId, body: ownerNote, thread_id: thread.id }]);
-      onDone?.();
+      await onDone?.();
     } catch (e: any) {
       setError(e?.message ?? 'Failed to send message');
     } finally {
