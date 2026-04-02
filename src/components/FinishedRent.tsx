@@ -4,7 +4,7 @@ import { supabase } from '../supabase';
 type FinishedRentProps = {
   bookId: string;
   threadId: string;
-  onDone?: () => void;
+  onDone?: () => void | Promise<void>;
 };
 
 export default function FinishedRent({ threadId, bookId, onDone }: FinishedRentProps) {
