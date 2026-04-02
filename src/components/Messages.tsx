@@ -80,6 +80,7 @@ const Messages: React.FC<MessagesProps> = ({ messages, onMarkRead, onSendReply, 
                   }}
                 >
 {t('messages.aboutBook')} <strong>{m.bookTitle}</strong>
+{m.isOwner && m.senderName && <span style={{ fontWeight: 400 }}> · {t('messages.from')} {m.senderName}</span>}
                 </div>
               )}
               
@@ -97,8 +98,9 @@ const Messages: React.FC<MessagesProps> = ({ messages, onMarkRead, onSendReply, 
               <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                 {(() => {
                   const isSystemMsg = typeof m.body === 'string' && m.body.startsWith('!system:');
-                  const displayName = isSystemMsg ? t('systemMemo.systemLabel') : m.senderName;
-                  const avatarLabel = isSystemMsg ? 'SYS' : m.senderName.split(' ').filter(Boolean).slice(0, 2).map(p => p.charAt(0).toUpperCase()).join('');
+                  const isBorrowRequest = isSystemMsg && m.body.toLowerCase().includes('requested rent period');
+                  const displayName = isSystemMsg && !isBorrowRequest ? t('systemMemo.systemLabel') : m.senderName;
+                  const avatarLabel = (isSystemMsg && !isBorrowRequest) ? 'SYS' : m.senderName.split(' ').filter(Boolean).slice(0, 2).map(p => p.charAt(0).toUpperCase()).join('');
                   return (
                     <>
                       <div className="message-avatar">{avatarLabel}</div>
@@ -172,7 +174,7 @@ const Messages: React.FC<MessagesProps> = ({ messages, onMarkRead, onSendReply, 
                       <textarea
                         value={replyText}
                         onChange={(e) => setReplyText(e.target.value)}
-                    placeholder={t('messages.replyPlaceholder') || ''}
+                    placeholder={(m as any).otherUserName ? `${t('messages.replyPlaceholder')} — ${t('messages.replyWillBeSentTo')} ${(m as any).otherUserName}` : t('messages.replyPlaceholder') || ''}
                         style={{ width: '100%', padding: 10, borderRadius: 12, border: '1px solid #e5e7eb' }}
                         rows={3}
                       />

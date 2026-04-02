@@ -181,6 +181,13 @@ button {
   color: var(--c-text);
 }
 
+.btn:disabled,
+.btn--ghost:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: auto;
+}
+
 /* Green primary button */
 .submit-btn, .login-btn {
   display: inline-flex;
@@ -1577,6 +1584,42 @@ body.modal-open { overflow: hidden; }
 .request-card.card {
   padding: var(--sp-3);
   border-radius: var(--r-lg);
+}
+
+.messages-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.message-item {
+  border: 1px solid #e2e8f0;
+  border-radius: var(--r-lg);
+  padding: var(--sp-3);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  background: #fff;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease;
+}
+
+.message-item:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.request-compose__dates {
+  display: flex;
+  gap: var(--sp-3);
+}
+
+.request-compose__dates .request-date {
+  flex: 1;
+}
+
+.request-actions {
+  display: flex;
+  gap: var(--sp-2);
+  justify-content: flex-end;
+  margin-top: var(--sp-4);
 }
 
 .request-card--highlight {

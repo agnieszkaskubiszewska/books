@@ -270,12 +270,12 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
         body: systemBody,
         threadId: it.threadId
       });
-      // oznacz wątek jako zarchiwizowany (przeniesie się do zakładki "Zarchiwizowane")
+      // oznacz konkretną prośbę jako zarchiwizowaną
       setArchivedThreads(prev => {
-        const next = { ...prev, [it.threadId]: true };
+        const next = { ...prev, [it.id]: true };
         try {
           const ids = Object.entries(next).filter(([, v]) => !!v).map(([k]) => k);
-          localStorage.setItem('req_archived_threads', JSON.stringify(ids));
+          localStorage.setItem('req_archived_request_ids', JSON.stringify(ids));
         } catch {}
         return next;
       });
@@ -287,7 +287,7 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
   }
 
   // Po zakończeniu wypożyczenia odśwież stan przycisków dla danej książki
-  async function refreshAfterFinish(bookId: string, threadId: string) {
+  async function refreshAfterFinish(bookId: string, threadId: string, requestId: string) {
     try {
       const { data } = await supabase
         .from('rents')
@@ -304,17 +304,16 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
         return next;
       });
       // NIE blokujemy już przycisków dla wątku po zwrocie – nowa prośba ma być możliwa
-      // oznacz jako zarchiwizowany
+      // oznacz konkretną prośbę (nie cały wątek) jako zarchiwizowaną
       setArchivedThreads(prev => {
-        const next = { ...prev, [threadId]: true };
+        const next = { ...prev, [requestId]: true };
         try {
           const ids = Object.entries(next).filter(([, v]) => !!v).map(([k]) => k);
-          localStorage.setItem('req_archived_threads', JSON.stringify(ids));
+          localStorage.setItem('req_archived_request_ids', JSON.stringify(ids));
         } catch {}
         return next;
       });
     } catch {
-      // w razie błędu po prostu spróbuj odblokować – UI i tak odświeży się przy kolejnym wejściu
       setActiveRentByBook(prev => ({ ...prev, [bookId]: false }));
       setAcceptedByBook(prev => {
         const next = { ...prev };
@@ -330,10 +329,10 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
         return next;
       });
       setArchivedThreads(prev => {
-        const next = { ...prev, [threadId]: true };
+        const next = { ...prev, [requestId]: true };
         try {
           const ids = Object.entries(next).filter(([, v]) => !!v).map(([k]) => k);
-          localStorage.setItem('req_archived_threads', JSON.stringify(ids));
+          localStorage.setItem('req_archived_request_ids', JSON.stringify(ids));
         } catch {}
         return next;
       });
@@ -448,20 +447,20 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
           }
           setActiveRentByBook(map);
           setAcceptedByBook(accepted);
-          // restore disabled threads (persisted locally) but only for currently visible threadIds
+          // restore disabled threads — only keep disabled if the book is still actively rented
           try {
             const raw = localStorage.getItem('req_disabled_threads');
             const saved = raw ? (JSON.parse(raw) as string[]) : [];
-            const visible = new Set<string>(
-              Object.values(grouped).flatMap(g => g.items.map(it => it.threadId))
-            );
+            const threadToBook: Record<string, string> = {};
+            Object.entries(grouped).forEach(([bookId, g]) => {
+              g.items.forEach(it => { threadToBook[it.threadId] = bookId; });
+            });
             const restored: Record<string, boolean> = {};
-            (saved || []).forEach((tid: string) => { if (visible.has(tid)) restored[tid] = true; });
-            // Jeśli pojawiły się NOWE prośby w tych wątkach, odblokuj je
-            const requestThreadIds = new Set<string>(Object.values(grouped).flatMap(g => g.items.map(it => it.threadId)));
-            requestThreadIds.forEach(tid => { if (restored[tid]) delete restored[tid]; });
+            (saved || []).forEach((tid: string) => {
+              const bookId = threadToBook[tid];
+              if (bookId && map[bookId]) restored[tid] = true;
+            });
             setDisabledThreads(restored);
-            // zaktualizuj localStorage po czyszczeniu
             try {
               const ids = Object.entries(restored).filter(([, v]) => !!v).map(([k]) => k);
               localStorage.setItem('req_disabled_threads', JSON.stringify(ids));
@@ -469,23 +468,16 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
           } catch {
             setDisabledThreads({});
           }
-          // restore archived threads similarly (only for visible)
+          // restore archived requests — keyed by request message ID, once archived always archived
           try {
-            const rawA = localStorage.getItem('req_archived_threads');
+            const rawA = localStorage.getItem('req_archived_request_ids');
             const savedA = rawA ? (JSON.parse(rawA) as string[]) : [];
-            const visible = new Set<string>(
-              Object.values(grouped).flatMap(g => g.items.map(it => it.threadId))
+            const visibleRequestIds = new Set<string>(
+              Object.values(grouped).flatMap(g => g.items.map(it => it.id))
             );
             const restoredA: Record<string, boolean> = {};
-            (savedA || []).forEach((tid: string) => { if (visible.has(tid)) restoredA[tid] = true; });
-            // Jeśli mamy świeże prośby w tych wątkach, nie traktuj ich jako archiwalne
-            const requestThreadIds = new Set<string>(Object.values(grouped).flatMap(g => g.items.map(it => it.threadId)));
-            requestThreadIds.forEach(tid => { if (restoredA[tid]) delete restoredA[tid]; });
+            (savedA || []).forEach((rid: string) => { if (visibleRequestIds.has(rid)) restoredA[rid] = true; });
             setArchivedThreads(restoredA);
-            try {
-              const idsA = Object.entries(restoredA).filter(([, v]) => !!v).map(([k]) => k);
-              localStorage.setItem('req_archived_threads', JSON.stringify(idsA));
-            } catch {}
           } catch {
             setArchivedThreads({});
           }
@@ -747,7 +739,7 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
         {/* Owner requests as compact grid (max 4 per row) */}
         {!hasCompose && viewMode === 'toMe' && (() => {
           const allItems: RequestItem[] = Object.values(requests).flatMap(g => g.items);
-          const flatItems = allItems.filter(it => !archivedThreads[it.threadId]);
+          const flatItems = allItems.filter(it => !archivedThreads[it.id]);
           if (flatItems.length === 0) return <p>{t('requests.noRequests') || 'No requests yet.'}</p>;
           return (
             <div className="requests-grid">
@@ -791,7 +783,7 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
                         bookId={it.bookId}
                         threadId={it.threadId}
                         onDone={async () => {
-                          await refreshAfterFinish(it.bookId, it.threadId);
+                          await refreshAfterFinish(it.bookId, it.threadId, it.id);
                           if (onRefreshBooks) await onRefreshBooks();
                         }}
                       />
@@ -807,7 +799,12 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
                         disabled={submitting || !!activeRentByBook[it.bookId] || !!disabledThreads[it.threadId]}
                         title={
                           activeRentByBook[it.bookId]
-                            ? (t('requests.bookAlreadyRented') || 'Book already rented')
+                            ? (() => {
+                                const borrowerName = acceptedByBook[it.bookId]?.requesterName;
+                                return borrowerName
+                                  ? (t('requests.waitingForReturn', { name: borrowerName }) || `Dostępne gdy ${borrowerName} odda książkę`)
+                                  : (t('requests.bookAlreadyRented') || 'Book already rented');
+                              })()
                             : (disabledThreads[it.threadId] ? (t('requests.requestCompleted') || 'This request already completed') : undefined)
                         }
                         onClick={() => handleAgree(it)}
@@ -864,7 +861,7 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
         })()}
         {/* Archived grid (refused or returned) */}
         {!hasCompose && viewMode === 'archived' && (() => {
-          const ownerArchived = Object.values(requests).flatMap(g => g.items).filter(it => archivedThreads[it.threadId] || disabledThreads[it.threadId]);
+          const ownerArchived = Object.values(requests).flatMap(g => g.items).filter(it => archivedThreads[it.id] || disabledThreads[it.threadId]);
           const mineArchived = myRequests.filter(it => myArchivedThreads[it.threadId]);
           const flatItems = [...ownerArchived, ...mineArchived];
           if (flatItems.length === 0) return <p>{t('requests.noRequests') || 'No requests yet.'}</p>;
