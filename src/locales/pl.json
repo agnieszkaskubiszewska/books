@@ -83,7 +83,11 @@
     "currentBorrow": "Aktualnie pożyczam",
     "noneShare": "Brak aktualnie udostępnionych książek",
     "noneBorrow": "Brak aktualnie pożyczanych książek",
-    "noRating": "brak oceny"
+    "noRating": "brak oceny",
+    "about": "O mnie",
+    "aboutPlaceholder": "Napisz coś o sobie...",
+    "saveAbout": "Zapisz",
+    "saved": "Zapisano!"
   },
   "add": {
     "title": "Dodaj nową książkę",
