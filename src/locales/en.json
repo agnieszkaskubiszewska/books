@@ -83,7 +83,11 @@
     "currentBorrow": "Currently borrowing",
     "noneShare": "No currently shared books",
     "noneBorrow": "No currently borrowed books",
-    "noRating": "no rating yet"
+    "noRating": "no rating yet",
+    "about": "About me",
+    "aboutPlaceholder": "Write something about yourself...",
+    "saveAbout": "Save",
+    "saved": "Saved!"
   },
   "add": {
     "title": "Add a new book",

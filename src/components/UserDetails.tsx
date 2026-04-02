@@ -4,9 +4,12 @@ import { useTranslation } from 'react-i18next';
 
 function UserDetails({ user }: { user: any }) {
   const { t } = useTranslation();
-  const [dbUser, setDbUser] = React.useState<{ first_name?: string; last_name?: string; email?: string } | null>(null);
+  const [dbUser, setDbUser] = React.useState<{ first_name?: string; last_name?: string; email?: string; about?: string } | null>(null);
   const [loading, setLoading] = React.useState<boolean>(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [about, setAbout] = React.useState<string>('');
+  const [savingAbout, setSavingAbout] = React.useState<boolean>(false);
+  const [savedAbout, setSavedAbout] = React.useState<boolean>(false);
   const [currentRents, setCurrentRents] = React.useState<Array<{ id: string; title: string; rent_from: string | null; rent_to: string | null; role: 'owner' | 'borrower' }>>([]);
   const [rentHistory, setRentHistory] = React.useState<Array<{ id: string; title: string; rent_from: string | null; rent_to: string | null; role: 'owner' | 'borrower' }>>([]);
   const [ratingOwner, setRatingOwner] = React.useState<number | null>(null);
@@ -27,11 +30,12 @@ function UserDetails({ user }: { user: any }) {
         if (!authUserId) { setLoading(false); return; }
         const { data, error } = await supabase
           .from('users')
-          .select('first_name, last_name, email')
+          .select('first_name, last_name, email, about')
           .eq('id', authUserId)
           .single();
         if (error) { setError(error.message); setLoading(false); return; }
         setDbUser(data || null);
+        setAbout(data?.about || '');
       } catch (e: any) {
         setError(e?.message ?? 'Failed to load user details');
       } finally {
@@ -111,6 +115,23 @@ function UserDetails({ user }: { user: any }) {
     })();
   }, []);
 
+  const handleSaveAbout = async () => {
+    try {
+      setSavingAbout(true);
+      setSavedAbout(false);
+      const { data: auth } = await supabase.auth.getUser();
+      const authUserId = auth.user?.id;
+      if (!authUserId) return;
+      await supabase.from('users').update({ about }).eq('id', authUserId);
+      setSavedAbout(true);
+      setTimeout(() => setSavedAbout(false), 2000);
+    } catch {
+      // silent
+    } finally {
+      setSavingAbout(false);
+    }
+  };
+
   const emailLocal = (user?.email || '').split('@')[0] || '';
   const nameParts = (user?.name || '').trim().split(/\s+/).filter(Boolean);
   const inferredFirst = nameParts[0] || emailLocal;
@@ -134,6 +155,33 @@ function UserDetails({ user }: { user: any }) {
           <p><strong>{t('user.firstName')}:</strong> {first}</p>
           <p><strong>{t('user.lastName')}:</strong> {last}</p>
           <p><strong>{t('user.email')}:</strong> {email}</p>
+          <div style={{ marginTop: 'var(--sp-5)', borderTop: '1px solid var(--c-border)', paddingTop: 'var(--sp-4)' }}>
+            <label style={{ display: 'block', fontWeight: 600, marginBottom: 'var(--sp-2)', color: 'var(--c-text)' }}>{t('user.about')}</label>
+            <textarea
+              value={about}
+              onChange={e => setAbout(e.target.value)}
+              rows={4}
+              style={{
+                width: '100%',
+                padding: 'var(--sp-3)',
+                borderRadius: 'var(--r-md)',
+                border: '1px solid var(--c-border)',
+                background: 'var(--c-bg)',
+                color: 'var(--c-text)',
+                fontSize: '0.875rem',
+                resize: 'vertical',
+                outline: 'none',
+                fontFamily: 'inherit',
+              }}
+              placeholder={t('user.aboutPlaceholder') as string}
+            />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-3)', marginTop: 'var(--sp-3)' }}>
+              <button className="btn" disabled={savingAbout} onClick={handleSaveAbout}>
+                {t('user.saveAbout')}
+              </button>
+              {savedAbout && <span style={{ color: 'var(--c-green)', fontSize: '0.875rem', fontWeight: 500 }}>{t('user.saved')}</span>}
+            </div>
+          </div>
         </>
       )}
         </div>

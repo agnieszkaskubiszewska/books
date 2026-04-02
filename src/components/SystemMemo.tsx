@@ -70,10 +70,54 @@ function formatRentPeriodContent(content: string, lang: string): string | null {
   return null;
 }
 
+const EN_TO_KEY: Array<{ match: RegExp; pl: string; en: string }> = [
+  {
+    match: /owner confirmed the book was returned/i,
+    pl: 'Książka została zwrócona. Dziękujemy!',
+    en: 'The book has been returned. Thank you!',
+  },
+  {
+    match: /please contact the owner to agree on a new return date/i,
+    pl: 'Skontaktuj się z właścicielem w sprawie nowej daty zwrotu.',
+    en: 'Please contact the owner to agree on a new return date.',
+  },
+  {
+    match: /we asked the borrower to contact you/i,
+    pl: 'Wysłaliśmy prośbę do wypożyczającego o kontakt w sprawie daty zwrotu.',
+    en: 'We asked the borrower to contact you about the return date.',
+  },
+  {
+    match: /owner agreed to rent this book/i,
+    pl: 'Właściciel zgodził się na wypożyczenie książki.',
+    en: 'The owner agreed to lend you this book.',
+  },
+  {
+    match: /owner refused to rent this book/i,
+    pl: 'Właściciel nie wyraził zgody na wypożyczenie książki.',
+    en: 'The owner declined the borrow request.',
+  },
+  {
+    match: /owner closed the discussion/i,
+    pl: 'Właściciel zamknął dyskusję.',
+    en: 'The owner closed the discussion.',
+  },
+];
+
+function translateLegacyContent(content: string, lang: string): string | null {
+  for (const entry of EN_TO_KEY) {
+    if (entry.match.test(content)) {
+      return lang === 'pl' ? entry.pl : entry.en;
+    }
+  }
+  return null;
+}
+
 const SystemMemo: React.FC<SystemMemoProps> = ({ content }) => {
   const { t, i18n } = useTranslation();
   const palette = getStylesForContent(content);
-  const formatted = formatRentPeriodContent(content, i18n.language);
+  const formatted =
+    formatRentPeriodContent(content, i18n.language) ??
+    translateLegacyContent(content, i18n.language);
   return (
     <div style={{
       borderRadius: 12,
