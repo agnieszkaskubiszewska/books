@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Section } from '../types';
+import { Facehash } from 'facehash';
+import { AVATAR_PALETTES } from '../avatarPalettes';
 
 interface HeaderProps {
   currentSection: Section;
@@ -10,9 +12,10 @@ interface HeaderProps {
   isLoggedIn: boolean;
   onLogout: () => void;
   unreadCount?: number;
+  avatarPalette?: number;
 }
 
-const Header: React.FC<HeaderProps> = ({ currentSection, onSectionChange, user, isLoggedIn, onLogout, unreadCount = 0 }) => {
+const Header: React.FC<HeaderProps> = ({ currentSection, onSectionChange, user, isLoggedIn, onLogout, unreadCount = 0, avatarPalette = 0 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isMessagesMenuOpen, setIsMessagesMenuOpen] = useState(false);
@@ -176,9 +179,15 @@ const handleSectionClick = (section: Section) => {
           >
             {isLoggedIn && user ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div className="user-avatar-text">
-                  {initials}
-                </div>
+                <Facehash
+                  name={user.email || user.name}
+                  size={28}
+                  colors={AVATAR_PALETTES[avatarPalette] ?? AVATAR_PALETTES[0]}
+                  showInitial={false}
+                  intensity3d="subtle"
+                  interactive={false}
+                  style={{ borderRadius: '50%', overflow: 'hidden', flexShrink: 0 }}
+                />
                 <span className="user-name">{user.firstName + ' ' + user.lastName || user.name}
                 </span>
               </div>

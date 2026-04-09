@@ -194,6 +194,61 @@ export async function closeThread(threadId: string) {
   if (error) throw new Error(error.message);
   return true;
 }
+export async function getOrCreateDirectThread(params: {
+  currentUserId: string;
+  recipientId: string;
+}): Promise<string> {
+  const { currentUserId, recipientId } = params;
+
+  if (currentUserId === recipientId) {
+    throw new Error('Nie możesz rozpocząć rozmowy ze sobą.');
+  }
+
+  const { data: existing1 } = await supabase
+    .from('threads')
+    .select('id')
+    .is('book_id', null)
+    .eq('owner_id', currentUserId)
+    .eq('other_user_id', recipientId)
+    .eq('is_closed', false)
+    .maybeSingle();
+  if (existing1?.id) return existing1.id as string;
+
+  const { data: existing2 } = await supabase
+    .from('threads')
+    .select('id')
+    .is('book_id', null)
+    .eq('owner_id', recipientId)
+    .eq('other_user_id', currentUserId)
+    .eq('is_closed', false)
+    .maybeSingle();
+  if (existing2?.id) return existing2.id as string;
+
+  const { data: created, error: insErr } = await supabase
+    .from('threads')
+    .insert([{ book_id: null, owner_id: currentUserId, other_user_id: recipientId }])
+    .select('id')
+    .maybeSingle();
+  if (insErr) throw new Error(insErr.message);
+  return created!.id as string;
+}
+
+export async function updateUserBio(userId: string, bio: string): Promise<void> {
+  const { error } = await supabase
+    .from('users')
+    .update({ bio })
+    .eq('id', userId);
+  if (error) throw new Error(error.message);
+}
+
+export async function updateAvatarPalette(userId: string, palette: number): Promise<void> {
+  const { error } = await supabase
+    .from('users')
+    .update({ avatar_palette: palette })
+    .eq('id', userId);
+  if (error) throw new Error(error.message);
+}
+
 export async function getOwnerName(ownerId: string): Promise<string> {
   const { data, error } = await supabase
     .from('users')

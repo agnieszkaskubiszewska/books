@@ -1,8 +1,11 @@
 import React from 'react';
 import { supabase } from '../supabase';
+import { updateAvatarPalette } from '../supabase';
 import { useTranslation } from 'react-i18next';
+import { Facehash } from 'facehash';
+import { AVATAR_PALETTES } from '../avatarPalettes';
 
-function UserDetails({ user }: { user: any }) {
+function UserDetails({ user, onAvatarPaletteChange }: { user: any; onAvatarPaletteChange?: (p: number) => void }) {
   const { t } = useTranslation();
   const [dbUser, setDbUser] = React.useState<{ first_name?: string; last_name?: string; email?: string; about?: string } | null>(null);
   const [loading, setLoading] = React.useState<boolean>(true);
@@ -10,6 +13,8 @@ function UserDetails({ user }: { user: any }) {
   const [about, setAbout] = React.useState<string>('');
   const [savingAbout, setSavingAbout] = React.useState<boolean>(false);
   const [savedAbout, setSavedAbout] = React.useState<boolean>(false);
+  const [authUserId, setAuthUserId] = React.useState<string | null>(null);
+  const [selectedPalette, setSelectedPalette] = React.useState<number>(0);
   const [currentRents, setCurrentRents] = React.useState<Array<{ id: string; title: string; rent_from: string | null; rent_to: string | null; role: 'owner' | 'borrower' }>>([]);
   const [rentHistory, setRentHistory] = React.useState<Array<{ id: string; title: string; rent_from: string | null; rent_to: string | null; role: 'owner' | 'borrower' }>>([]);
   const [ratingOwner, setRatingOwner] = React.useState<number | null>(null);
@@ -28,14 +33,16 @@ function UserDetails({ user }: { user: any }) {
         const { data: auth } = await supabase.auth.getUser();
         const authUserId = auth.user?.id;
         if (!authUserId) { setLoading(false); return; }
+        setAuthUserId(authUserId);
         const { data, error } = await supabase
           .from('users')
-          .select('first_name, last_name, email, about')
+          .select('first_name, last_name, email, about, avatar_palette')
           .eq('id', authUserId)
           .single();
         if (error) { setError(error.message); setLoading(false); return; }
         setDbUser(data || null);
         setAbout(data?.about || '');
+        setSelectedPalette((data as any)?.avatar_palette ?? 0);
       } catch (e: any) {
         setError(e?.message ?? 'Failed to load user details');
       } finally {
@@ -119,10 +126,9 @@ function UserDetails({ user }: { user: any }) {
     try {
       setSavingAbout(true);
       setSavedAbout(false);
-      const { data: auth } = await supabase.auth.getUser();
-      const authUserId = auth.user?.id;
       if (!authUserId) return;
       await supabase.from('users').update({ about }).eq('id', authUserId);
+      setDbUser(prev => prev ? { ...prev, about } : prev);
       setSavedAbout(true);
       setTimeout(() => setSavedAbout(false), 2000);
     } catch {
@@ -180,6 +186,45 @@ function UserDetails({ user }: { user: any }) {
                 {t('user.saveAbout')}
               </button>
               {savedAbout && <span style={{ color: 'var(--c-green)', fontSize: '0.875rem', fontWeight: 500 }}>{t('user.saved')}</span>}
+            </div>
+          </div>
+          <div style={{ marginTop: 'var(--sp-5)', borderTop: '1px solid var(--c-border)', paddingTop: 'var(--sp-4)' }}>
+            <label style={{ display: 'block', fontWeight: 600, marginBottom: 'var(--sp-3)', color: 'var(--c-text)' }}>Wygląd avatara</label>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              {AVATAR_PALETTES.map((palette, i) => (
+                <button
+                  key={i}
+                  onClick={async () => {
+                    if (!authUserId) return;
+                    setSelectedPalette(i);
+                    try {
+                      await updateAvatarPalette(authUserId, i);
+                      onAvatarPaletteChange?.(i);
+                    } catch {}
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    padding: 3,
+                    borderRadius: '50%',
+                    cursor: 'pointer',
+                    outline: selectedPalette === i ? '3px solid var(--c-green)' : '3px solid transparent',
+                    outlineOffset: 2,
+                    transition: 'outline 0.15s',
+                  }}
+                  title={`Paleta ${i + 1}`}
+                >
+                  <Facehash
+                    name={first || 'User'}
+                    size={52}
+                    colors={palette}
+                    showInitial={false}
+                    intensity3d="subtle"
+                    interactive={false}
+                    style={{ borderRadius: '50%', overflow: 'hidden', display: 'block' }}
+                  />
+                </button>
+              ))}
             </div>
           </div>
         </>
