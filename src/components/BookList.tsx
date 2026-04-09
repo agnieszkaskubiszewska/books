@@ -326,7 +326,18 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
               <p><strong>{t('books.labels.author')}:</strong> {book.author}</p>
               <p><strong>{t('books.labels.year')}:</strong> {book.year}</p>
               <p><strong>{t('books.labels.genre')}:</strong> {getGenreName(book.genre)}</p>
-              <p><strong>{t('books.owner')}:</strong> {book.ownerId ? ownerNames[book.ownerId] : ''}</p>
+              <p>
+                <strong>{t('books.owner')}:</strong>{' '}
+                {book.ownerId ? (
+                  <button
+                    className="btn btn--ghost"
+                    style={{ padding: '0 4px', minHeight: 'unset', display: 'inline', fontWeight: 'inherit', textDecoration: 'underline' }}
+                    onClick={(e) => { e.stopPropagation(); navigate(`/user/${book.ownerId}`); }}
+                  >
+                    {ownerNames[book.ownerId] || ''}
+                  </button>
+                ) : ''}
+              </p>
               {book.rentRegion && (
                 <p><strong>{t('books.labels.rentRegion')}:</strong> {book.rentRegion}</p>
               )}

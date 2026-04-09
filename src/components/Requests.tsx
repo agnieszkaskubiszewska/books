@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { supabase, getOrCreateThread as sbGetOrCreateThread, sendMessage as sbSendMessage, createRent as sbCreateRent } from '../supabase';
 import SingleBookReq from './SingleBookReq';
 import FinishedRent from './FinishedRent';
+import { Facehash } from 'facehash';
 const DayPilotSchedulerLazy = (React.lazy(async () => {
   try {
     const mod: any = await import('@daypilot/daypilot-lite-react');
@@ -750,14 +751,15 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
                   data-book-id={it.bookId}
                 >
                   <div className="request-header">
-                    <div className="request-avatar">
-                      {(it.requesterName || 'U')
-                        .split(' ')
-                        .filter(Boolean)
-                        .slice(0, 2)
-                        .map(part => part.charAt(0).toUpperCase())
-                        .join('')}
-                    </div>
+                    <Facehash
+                      name={it.requesterName || 'User'}
+                      size={36}
+                      colors={["#2d3545", "#2DBA68", "#4a7a6a", "#5c7a9e", "#6B7694"]}
+                      showInitial={false}
+                      intensity3d="subtle"
+                      interactive={false}
+                      style={{ borderRadius: '50%', overflow: 'hidden', flexShrink: 0 }}
+                    />
                     <div className="request-title">
                       <div className="requester-name">{it.requesterName || 'User'}</div>
                       <div className="request-meta">
@@ -830,14 +832,15 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
               {flatItems.map((it) => (
                 <div key={it.id} className="request-card card">
                   <div className="request-header">
-                    <div className="request-avatar">
-                      {(it.requesterName || 'O')
-                        .split(' ')
-                        .filter(Boolean)
-                        .slice(0, 2)
-                        .map(part => part.charAt(0).toUpperCase())
-                        .join('')}
-                    </div>
+                    <Facehash
+                      name={it.requesterName || 'User'}
+                      size={36}
+                      colors={["#2d3545", "#2DBA68", "#4a7a6a", "#5c7a9e", "#6B7694"]}
+                      showInitial={false}
+                      intensity3d="subtle"
+                      interactive={false}
+                      style={{ borderRadius: '50%', overflow: 'hidden', flexShrink: 0 }}
+                    />
                     <div className="request-title">
                       <div className="requester-name">{it.requesterName || 'Owner'}</div>
                       <div className="request-meta">{new Date(it.createdAt).toLocaleString()}</div>
@@ -870,14 +873,15 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
               {flatItems.map((it) => (
                 <div key={`${it.id}-arch`} className="request-card card">
                   <div className="request-header">
-                    <div className="request-avatar">
-                      {(it.requesterName || 'U')
-                        .split(' ')
-                        .filter(Boolean)
-                        .slice(0, 2)
-                        .map(part => part.charAt(0).toUpperCase())
-                        .join('')}
-                    </div>
+                    <Facehash
+                      name={it.requesterName || 'User'}
+                      size={36}
+                      colors={["#2d3545", "#2DBA68", "#4a7a6a", "#5c7a9e", "#6B7694"]}
+                      showInitial={false}
+                      intensity3d="subtle"
+                      interactive={false}
+                      style={{ borderRadius: '50%', overflow: 'hidden', flexShrink: 0 }}
+                    />
                     <div className="request-title">
                       <div className="requester-name">{it.requesterName || 'User'}</div>
                       <div className="request-meta">

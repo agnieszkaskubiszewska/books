@@ -12,9 +12,10 @@ import Messages from './components/Messages';
 import Requests from './components/Requests';
 import Footer from './components/Footer';
 import UserDetails from './components/UserDetails';
+import UserPanel from './components/UserPanel';
 import { Book, Section, Genre } from './types';
 import { supabase } from './supabase';
-import { fetchMessagesForUser,getOrCreateThread as sbGetOrCreateThread, sendMessage as sbSendMessage, markMessageRead as sbMarkMessageRead, createRent as sbCreateRent, closeThread as sbCloseThread, type DbMessage } from './supabase';
+import { fetchMessagesForUser,getOrCreateThread as sbGetOrCreateThread, getOrCreateDirectThread as sbGetOrCreateDirectThread, sendMessage as sbSendMessage, markMessageRead as sbMarkMessageRead, createRent as sbCreateRent, closeThread as sbCloseThread, type DbMessage } from './supabase';
 
 const AppContent: React.FC = () => {
   const navigate = useNavigate();
@@ -38,6 +39,7 @@ const AppContent: React.FC = () => {
   const [userNames, setUserNames] = useState<Record<string, string>>({});
   const [activeRentDatesByBook, setActiveRentDatesByBook] = useState<Record<string, { from: string | null; to: string | null }>>({});
   const [myRentedBookIds, setMyRentedBookIds] = useState<Set<string>>(new Set());
+  const [userAvatarPalette, setUserAvatarPalette] = useState<number>(0);
   const unreadCount = dbMessages
   .filter((m): m is DbMessage => !!m)
   .filter(m => !m.read && m.recipient_id === currentUserId).length;
@@ -152,6 +154,19 @@ const AppContent: React.FC = () => {
     refreshMessages();
   }, [isLoggedIn, currentUserId]);
 
+  // Pobierz paletę avatara zalogowanego użytkownika
+  useEffect(() => {
+    if (!currentUserId) return;
+    (async () => {
+      const { data } = await supabase
+        .from('users')
+        .select('avatar_palette')
+        .eq('id', currentUserId)
+        .single();
+      setUserAvatarPalette(data?.avatar_palette ?? 0);
+    })();
+  }, [currentUserId]);
+
   // Resolve book titles for threads visible in dbMessages
   useEffect(() => {
     (async () => {
@@ -169,26 +184,28 @@ const AppContent: React.FC = () => {
         }
         const { data: threads, error: thErr } = await supabase
           .from('threads')
-          .select('id, book_id, owner_id, is_closed')
+          .select('id, book_id, owner_id, other_user_id, is_closed')
           .in('id', threadIds);
         if (thErr) {
           console.error('Error fetching threads:', thErr);
           return;
         }
         const bookIds = Array.from(new Set((threads || []).map((t: any) => t.book_id).filter(Boolean)));
-        const ownerIds = Array.from(new Set((threads || []).map((t: any) => t.owner_id).filter(Boolean)));
-        if (bookIds.length === 0) {
-          setThreadTitles({});
-          setThreadOwners({});
-          return;
-        }
-        const { data: booksRows, error: bErr } = await supabase
-          .from('books')
-          .select('id, title')
-          .in('id', bookIds);
-        if (bErr) {
-          console.error('Error fetching books for threads:', bErr);
-          return;
+        const ownerIds = Array.from(new Set([
+          ...(threads || []).map((t: any) => t.owner_id),
+          ...(threads || []).map((t: any) => t.other_user_id),
+        ].filter(Boolean)));
+        let booksRows: any[] = [];
+        if (bookIds.length > 0) {
+          const { data: bData, error: bErr } = await supabase
+            .from('books')
+            .select('id, title')
+            .in('id', bookIds);
+          if (bErr) {
+            console.error('Error fetching books for threads:', bErr);
+          } else {
+            booksRows = bData || [];
+          }
         }
         let usersRows: any[] = [];
         if (ownerIds.length > 0) {
@@ -220,9 +237,11 @@ const AppContent: React.FC = () => {
         const mapThreadToBookId: Record<string, string> = {};
         const mapThreadToClosed: Record<string, boolean> = {};
         (threads || []).forEach((t: any) => {
-          const title = bookIdToTitle.get(String(t.book_id));
-          if (title) mapThreadToTitle[String(t.id)] = title;
-          mapThreadToBookId[String(t.id)] = String(t.book_id);
+          if (t.book_id) {
+            const title = bookIdToTitle.get(String(t.book_id));
+            if (title) mapThreadToTitle[String(t.id)] = title;
+            mapThreadToBookId[String(t.id)] = String(t.book_id);
+          }
           const ownerName = userIdToName.get(String(t.owner_id));
           if (ownerName) mapThreadToOwner[String(t.id)] = ownerName;
           mapThreadToOwnerId[String(t.id)] = String(t.owner_id);
@@ -571,6 +590,21 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
     }
   };
 
+  const startDirectThread = async (recipientId: string, text: string) => {
+    if (!text.trim() || !currentUserId) return;
+    try {
+      const threadId = await sbGetOrCreateDirectThread({ currentUserId, recipientId });
+      const inserted = await sbSendMessage({ senderId: currentUserId, recipientId, body: text, threadId });
+      if (inserted) setDbMessages(prev => [inserted, ...prev]);
+      else setDbMessages(await fetchMessagesForUser());
+      showNotification('Wiadomość wysłana', 'success');
+    } catch (e: any) {
+      console.error('startDirectThread error:', e);
+      showNotification(e?.message ?? 'Nie udało się wysłać wiadomości.', 'error');
+      throw e;
+    }
+  };
+
   const agreeOnRent = async (threadId?: string | null) => {
     try {
       if (!threadId) return;
@@ -679,13 +713,14 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
 
   return (
     <div className="app">
-      <Header 
+      <Header
         currentSection={currentSection}
         onSectionChange={setCurrentSection}
         user={user}
         isLoggedIn={isLoggedIn}
         onLogout={handleLogout}
         unreadCount={unreadCount}
+        avatarPalette={userAvatarPalette}
       />
       <main className="main-content">
         <Routes>
@@ -704,7 +739,7 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
         myRentedBookIds={myRentedBookIds}
       />
     } />
-          <Route path="/user-details" element={isLoggedIn && user ? <UserDetails user={user} /> : <Navigate to="/login" />} />
+          <Route path="/user-details" element={isLoggedIn && user ? <UserDetails user={user} onAvatarPaletteChange={setUserAvatarPalette} /> : <Navigate to="/login" />} />
           <Route path="/messages" element={isLoggedIn ? (
             <Messages
             messages={Array.from(
@@ -770,6 +805,7 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
               onRefreshBooks={refreshBooks}
             />
           ) : (<Navigate to="/login" />)} />
+          <Route path="/user/:userId" element={<UserPanel currentUserId={currentUserId} isLoggedIn={isLoggedIn} onSendDirectMessage={startDirectThread} />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/requests" element={isLoggedIn ? <Requests onRefreshBooks={refreshBooks} /> : <Navigate to="/login" />} />

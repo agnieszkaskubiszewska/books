@@ -3,6 +3,7 @@ import { supabase } from '../supabase';
 import SystemMemo from './SystemMemo';
 import { submitUserRating } from '../supabase';
 import { useTranslation } from 'react-i18next';
+import { Facehash } from 'facehash';
 
 type MessageItem = {
   id: string;
@@ -103,7 +104,20 @@ const Messages: React.FC<MessagesProps> = ({ messages, onMarkRead, onSendReply, 
                   const avatarLabel = (isSystemMsg && !isBorrowRequest) ? 'SYS' : m.senderName.split(' ').filter(Boolean).slice(0, 2).map(p => p.charAt(0).toUpperCase()).join('');
                   return (
                     <>
-                      <div className="message-avatar">{avatarLabel}</div>
+                      {isSystemMsg && !isBorrowRequest ? (
+                        <div className="message-avatar">SYS</div>
+                      ) : (
+                        <Facehash
+                          name={m.senderName}
+                          size={36}
+                          colors={["#2d3545", "#2DBA68", "#4a7a6a", "#5c7a9e", "#6B7694"]}
+                          showInitial={false}
+                          intensity3d="subtle"
+                          interactive={false}
+                          enableBlink={false}
+                          style={{ borderRadius: '50%', overflow: 'hidden', flexShrink: 0 }}
+                        />
+                      )}
                       <div className="message-content">
                         <div className="message-header">
                           <div className="message-sender">{displayName}</div>
