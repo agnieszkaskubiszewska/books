@@ -159,7 +159,19 @@
     "mine": "My requests",
     "archivedTab": "Archived",
     "pending": "Pending",
-    "owner": "Owner"
+    "owner": "Owner",
+    "proposeDate": "Propose alternative date",
+    "proposeNewDate": "Propose new date",
+    "confirmProposal": "Confirm date",
+    "cancelProposal": "Cancel",
+    "proposeDateHint": "Book available from: {{date}}",
+    "queuedBorrower": "Queued borrower",
+    "pendingProposal": "Waiting for acceptance",
+    "acceptDate": "Accept date",
+    "declineDate": "Decline date",
+    "ownerProposedDate": "Owner proposes a date",
+    "borrowerDeclined": "Borrower declined the proposed date",
+    "borrowerAccepted": "Borrower accepted the date"
   },
   "systemMemo": {
     "systemLabel": "System"

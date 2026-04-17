@@ -3,7 +3,17 @@ import { useSearchParams } from 'react-router-dom';
 import dayjs, { Dayjs } from 'dayjs';
 import Calendar from './Calendar';
 import { useTranslation } from 'react-i18next';
-import { supabase, getOrCreateThread as sbGetOrCreateThread, sendMessage as sbSendMessage, createRent as sbCreateRent } from '../supabase';
+import {
+  supabase,
+  getOrCreateThread as sbGetOrCreateThread,
+  sendMessage as sbSendMessage,
+  createRent as sbCreateRent,
+  createQueueEntry as sbCreateQueueEntry,
+  getQueueEntriesForBookIds,
+  getQueueEntriesByThreadIds,
+  updateQueueEntryStatus,
+  type QueueEntry,
+} from '../supabase';
 import SingleBookReq from './SingleBookReq';
 import FinishedRent from './FinishedRent';
 import { Facehash } from 'facehash';
@@ -62,6 +72,15 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
   const [acceptedByBook, setAcceptedByBook] = React.useState<Record<string, { threadId: string; requesterId: string; requesterName: string }>>({});
   const [disabledThreads, setDisabledThreads] = React.useState<Record<string, boolean>>({});
   const [archivedThreads, setArchivedThreads] = React.useState<Record<string, boolean>>({});
+
+  // Queue negotiation state
+  const [queueByThread, setQueueByThread] = React.useState<Record<string, QueueEntry>>({});
+  const [myQueueByThread, setMyQueueByThread] = React.useState<Record<string, QueueEntry>>({});
+  const [proposingFor, setProposingFor] = React.useState<string | null>(null);
+  const [proposeFrom, setProposeFrom] = React.useState<Dayjs | null>(null);
+  const [proposeTo, setProposeTo] = React.useState<Dayjs | null>(null);
+  const [activeRentEndByBook, setActiveRentEndByBook] = React.useState<Record<string, string>>({});
+  const [latestQueueEndByBook, setLatestQueueEndByBook] = React.useState<Record<string, string>>({});
 
   // Borrower flow: compute min date based on active rent
   React.useEffect(() => {
@@ -189,9 +208,27 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
         } else {
           setMyArchivedThreads({});
         }
+
+        // load queue proposals directed at me (as borrower)
+        const allThreadIds = Array.from(new Set(mine.map(m => m.threadId)));
+        if (allThreadIds.length > 0) {
+          try {
+            const qEntries = await getQueueEntriesByThreadIds(allThreadIds);
+            const qByThread: Record<string, QueueEntry> = {};
+            qEntries.forEach(qe => {
+              if (!qByThread[qe.threadId]) qByThread[qe.threadId] = qe;
+            });
+            setMyQueueByThread(qByThread);
+          } catch {
+            setMyQueueByThread({});
+          }
+        } else {
+          setMyQueueByThread({});
+        }
       } catch {
         setMyRequests([]);
         setMyArchivedThreads({});
+        setMyQueueByThread({});
       }
     })();
   }, [searchParams]);
@@ -428,12 +465,16 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
         if (bookIds.length > 0) {
           const { data: act } = await supabase
             .from('rents')
-            .select('book_id, borrower, finished')
+            .select('book_id, borrower, finished, rent_to')
             .in('book_id', bookIds)
             .eq('finished', false);
           const map: Record<string, boolean> = {};
           const accepted: Record<string, { threadId: string; requesterId: string; requesterName: string }> = {};
-          (act || []).forEach((r: any) => { map[String(r.book_id)] = true; });
+          const rentEndMap: Record<string, string> = {};
+          (act || []).forEach((r: any) => {
+            map[String(r.book_id)] = true;
+            if (r.rent_to) rentEndMap[String(r.book_id)] = String(r.rent_to);
+          });
           // match borrower to request item for threadId
           for (const r of (act || [])) {
             const bId = String(r.book_id);
@@ -448,6 +489,28 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
           }
           setActiveRentByBook(map);
           setAcceptedByBook(accepted);
+          setActiveRentEndByBook(rentEndMap);
+
+          // load queue entries for these books
+          try {
+            const qEntries = await getQueueEntriesForBookIds(bookIds);
+            const qByThread: Record<string, QueueEntry> = {};
+            const latestQEnd: Record<string, string> = {};
+            qEntries.forEach(qe => {
+              // keep the most recent entry per thread (they're ordered by created_at desc in DB)
+              if (!qByThread[qe.threadId]) qByThread[qe.threadId] = qe;
+              // track latest accepted queue end per book for min-date calculation
+              if (qe.status === 'accepted') {
+                const cur = latestQEnd[qe.bookId];
+                if (!cur || qe.proposedTo > cur) latestQEnd[qe.bookId] = qe.proposedTo;
+              }
+            });
+            setQueueByThread(qByThread);
+            setLatestQueueEndByBook(latestQEnd);
+          } catch {
+            setQueueByThread({});
+            setLatestQueueEndByBook({});
+          }
           // restore disabled threads — only keep disabled if the book is still actively rented
           try {
             const raw = localStorage.getItem('req_disabled_threads');
@@ -494,6 +557,119 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
     })();
   }, [searchParams]);
 
+  // ── Queue negotiation handlers ──────────────────────────────────────────
+
+  async function openProposal(it: RequestItem) {
+    // activeRentEndByBook may be empty if owner just agreed in this session
+    // — fetch from DB as fallback
+    let rentEnd = activeRentEndByBook[it.bookId];
+    if (!rentEnd) {
+      try {
+        const { data } = await supabase
+          .from('rents')
+          .select('rent_to')
+          .eq('book_id', it.bookId)
+          .eq('finished', false)
+          .maybeSingle();
+        if (data?.rent_to) {
+          rentEnd = String(data.rent_to);
+          setActiveRentEndByBook(prev => ({ ...prev, [it.bookId]: rentEnd! }));
+        }
+      } catch {}
+    }
+    const queueEnd = latestQueueEndByBook[it.bookId];
+    const later = rentEnd && queueEnd
+      ? (dayjs(rentEnd).isAfter(dayjs(queueEnd)) ? rentEnd : queueEnd)
+      : (rentEnd || queueEnd);
+    // +1 dzień margines po zakończeniu aktualnego wypożyczenia / ostatniej kolejki
+    const minDate = later ? dayjs(later).add(1, 'day') : dayjs();
+    setProposeFrom(minDate);
+    setProposeTo(null);
+    setProposingFor(it.threadId);
+  }
+
+  async function handleConfirmProposal(it: RequestItem) {
+    if (!proposeFrom || !proposeTo) return;
+    try {
+      setSubmitting(true);
+      setError(null);
+      const { data: auth } = await supabase.auth.getUser();
+      const currentUserId = auth.user?.id;
+      if (!currentUserId) { setError('Not authenticated'); return; }
+      const fromStr = proposeFrom.format('YYYY-MM-DD');
+      const toStr = proposeTo.format('YYYY-MM-DD');
+      const qe = await sbCreateQueueEntry({
+        bookId: it.bookId,
+        bookOwner: currentUserId,
+        borrower: it.requesterId,
+        threadId: it.threadId,
+        proposedFrom: fromStr,
+        proposedTo: toStr,
+      });
+      await sbSendMessage({
+        senderId: currentUserId,
+        recipientId: it.requesterId,
+        body: `!system: Owner proposed queue dates from ${fromStr} to ${toStr}.`,
+        threadId: it.threadId,
+      });
+      setQueueByThread(prev => ({ ...prev, [it.threadId]: qe }));
+      setProposingFor(null);
+      setProposeFrom(null);
+      setProposeTo(null);
+      await refreshOwnerCalendar();
+    } catch (e: any) {
+      setError(e?.message ?? 'Failed to propose date');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleAcceptProposal(it: RequestItem, qe: QueueEntry) {
+    try {
+      setSubmitting(true);
+      setError(null);
+      const { data: auth } = await supabase.auth.getUser();
+      const currentUserId = auth.user?.id;
+      if (!currentUserId) { setError('Not authenticated'); return; }
+      await updateQueueEntryStatus(qe.id, 'accepted');
+      await sbSendMessage({
+        senderId: currentUserId,
+        recipientId: qe.bookOwner,
+        body: '!system: Borrower accepted queued dates.',
+        threadId: it.threadId,
+      });
+      setMyQueueByThread(prev => ({ ...prev, [it.threadId]: { ...qe, status: 'accepted' } }));
+    } catch (e: any) {
+      setError(e?.message ?? 'Failed to accept proposal');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleDeclineProposal(it: RequestItem, qe: QueueEntry) {
+    try {
+      setSubmitting(true);
+      setError(null);
+      const { data: auth } = await supabase.auth.getUser();
+      const currentUserId = auth.user?.id;
+      if (!currentUserId) { setError('Not authenticated'); return; }
+      await updateQueueEntryStatus(qe.id, 'declined');
+      await sbSendMessage({
+        senderId: currentUserId,
+        recipientId: qe.bookOwner,
+        body: '!system: Borrower declined queued dates.',
+        threadId: it.threadId,
+      });
+      // Nie archiwizujemy wątku — owner może zaproponować nowy termin,
+      // a borrower musi być w stanie go zobaczyć
+      setMyQueueByThread(prev => ({ ...prev, [it.threadId]: { ...qe, status: 'declined' } }));
+    } catch (e: any) {
+      setError(e?.message ?? 'Failed to decline proposal');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   // Build/refresh owner calendar (active rents per owned book)
   const refreshOwnerCalendar = React.useCallback(async () => {
     try {
@@ -520,9 +696,46 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
         const fallback = (u.email || '').split('@')[0] || '';
         return [String(u.id), full || fallback];
       }));
-      const resources = bookIds.map(id => ({ id, name: bookIdToTitle.get(id) || id }));
+      // Also fetch queue entries for calendar display
+      const { data: queueRows } = await supabase
+        .from('rent_queue')
+        .select('book_id, borrower, proposed_from, proposed_to, status')
+        .eq('book_owner', currentUserId)
+        .in('status', ['proposed', 'accepted']);
+      const queueBorrowerIds = Array.from(new Set((queueRows || []).map((r: any) => String(r.borrower))));
+      let queueUsersRows: any[] = [];
+      if (queueBorrowerIds.length > 0) {
+        const { data: quRows } = await supabase
+          .from('users')
+          .select('id, first_name, last_name, email')
+          .in('id', queueBorrowerIds);
+        queueUsersRows = quRows || [];
+      }
+      const queueUserIdToName = new Map<string, string>([
+        ...Array.from(userIdToName.entries()),
+        ...queueUsersRows.map((u: any) => {
+          const first = (u.first_name || '').trim();
+          const last = (u.last_name || '').trim();
+          const full = [first, last].filter(Boolean).join(' ');
+          return [String(u.id), full || (u.email || '').split('@')[0] || ''] as [string, string];
+        }),
+      ]);
+
+      // Build all calendar resources (union of rent books + queue books)
+      const allBookIds = Array.from(new Set([
+        ...bookIds,
+        ...(queueRows || []).map((r: any) => String(r.book_id)),
+      ]));
+      // Resolve any extra book titles for queue-only books
+      const missingBookIds = allBookIds.filter(id => !bookIdToTitle.has(id));
+      if (missingBookIds.length > 0) {
+        const { data: extraBooks } = await supabase.from('books').select('id, title').in('id', missingBookIds);
+        (extraBooks || []).forEach((b: any) => bookIdToTitle.set(String(b.id), String(b.title ?? '')));
+      }
+
+      const resources = allBookIds.map(id => ({ id, name: bookIdToTitle.get(id) || id }));
       const now = dayjs();
-      const events = rents.map((r: any, idx: number) => {
+      const activeEvents = rents.map((r: any, idx: number) => {
         const startIso = r.rent_from ? dayjs(r.rent_from).startOf('day').toISOString() : dayjs().startOf('day').toISOString();
         // DayPilot interpretuje "end" ekskluzywnie – dodaj 1 dzień, by okres był inkluzywny
         const endIso = r.rent_to ? dayjs(r.rent_to).add(1, 'day').startOf('day').toISOString() : dayjs().add(1, 'day').startOf('day').toISOString();
@@ -533,8 +746,15 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
         const cssClass = isActive ? 'dp-event--active' : 'dp-event--upcoming';
         return { id: `${String(r.book_id)}_${idx}`, start: startIso, end: endIso, resource: String(r.book_id), text: borrower, cssClass } as any;
       });
+      const queueEvents = (queueRows || []).map((r: any, idx: number) => {
+        const startIso = dayjs(r.proposed_from).startOf('day').toISOString();
+        const endIso = dayjs(r.proposed_to).add(1, 'day').startOf('day').toISOString();
+        const borrower = queueUserIdToName.get(String(r.borrower)) || 'User';
+        const cssClass = r.status === 'accepted' ? 'dp-event--queued-accepted' : 'dp-event--queued-proposed';
+        return { id: `q_${String(r.book_id)}_${idx}`, start: startIso, end: endIso, resource: String(r.book_id), text: borrower, cssClass } as any;
+      });
       setCalResources(resources);
-      setCalEvents(events);
+      setCalEvents([...activeEvents, ...queueEvents]);
     } catch {
       setCalResources([]);
       setCalEvents([]);
@@ -794,21 +1014,125 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
                     <div className="request-chip request-chip--archived">
                       {t('requests.archived') || 'Archived request'}
                     </div>
+                  ) : activeRentByBook[it.bookId] ? (
+                    (() => {
+                      const qe = queueByThread[it.threadId];
+                      // Date picker open for this thread
+                      if (proposingFor === it.threadId) {
+                        const rentEnd = activeRentEndByBook[it.bookId];
+                        const queueEnd = latestQueueEndByBook[it.bookId];
+                        const later = rentEnd && queueEnd
+                          ? (dayjs(rentEnd).isAfter(dayjs(queueEnd)) ? rentEnd : queueEnd)
+                          : (rentEnd || queueEnd);
+                        const minPropose = later ? dayjs(later).add(1, 'day') : dayjs();
+                        return (
+                          <div className="propose-date-panel">
+                            {later && (
+                              <p className="propose-date-hint">
+                                {t('requests.proposeDateHint', { date: minPropose.format('DD.MM.YYYY') })}
+                              </p>
+                            )}
+                            <div className="request-compose__dates">
+                              <div className="request-date">
+                                <Calendar
+                                  label={t('messages.rentFrom') || 'Od'}
+                                  value={proposeFrom}
+                                  onChange={(v) => setProposeFrom(v)}
+                                  required
+                                  error={!proposeFrom}
+                                  minDate={minPropose}
+                                />
+                              </div>
+                              <div className="request-date">
+                                <Calendar
+                                  label={t('messages.rentTo') || 'Do'}
+                                  value={proposeTo}
+                                  onChange={(v) => setProposeTo(v)}
+                                  required
+                                  error={!proposeTo}
+                                  minDate={proposeFrom ?? minPropose}
+                                />
+                              </div>
+                            </div>
+                            <div className="request-actions">
+                              <button
+                                className="btn btn--ghost"
+                                disabled={submitting}
+                                onClick={() => { setProposingFor(null); setProposeFrom(null); setProposeTo(null); }}
+                              >
+                                {t('requests.cancelProposal') || 'Anuluj'}
+                              </button>
+                              <button
+                                className="btn"
+                                disabled={submitting || !proposeFrom || !proposeTo}
+                                onClick={() => handleConfirmProposal(it)}
+                              >
+                                {t('requests.confirmProposal') || 'Potwierdź termin'}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      }
+                      // Proposal pending — waiting for borrower
+                      if (qe?.status === 'proposed') {
+                        return (
+                          <div className="request-chip request-chip--info">
+                            {t('requests.pendingProposal')}: {qe.proposedFrom} – {qe.proposedTo}
+                          </div>
+                        );
+                      }
+                      // Proposal accepted by borrower
+                      if (qe?.status === 'accepted') {
+                        return (
+                          <div className="request-chip request-chip--queued">
+                            {t('requests.queuedBorrower')}: {qe.proposedFrom} – {qe.proposedTo}
+                          </div>
+                        );
+                      }
+                      // Proposal declined by borrower — allow re-proposal or disagree
+                      if (qe?.status === 'declined') {
+                        return (
+                          <>
+                            <div className="request-chip request-chip--warning">
+                              {t('requests.borrowerDeclined')}
+                            </div>
+                            <div className="request-actions">
+                              <button
+                                className="btn btn--ghost-blue"
+                                disabled={submitting}
+                                onClick={() => openProposal(it)}
+                              >
+                                {t('requests.proposeNewDate')}
+                              </button>
+                              <button className="btn btn--ghost" disabled={submitting} onClick={() => handleDisagree(it)}>
+                                {t('messages.disagree')}
+                              </button>
+                            </div>
+                          </>
+                        );
+                      }
+                      // No proposal yet — show main CTA
+                      return (
+                        <div className="request-actions">
+                          <button
+                            className="btn btn--ghost-blue"
+                            disabled={submitting}
+                            onClick={() => openProposal(it)}
+                          >
+                            {t('requests.proposeDate')}
+                          </button>
+                          <button className="btn btn--ghost" disabled={submitting} onClick={() => handleDisagree(it)}>
+                            {t('messages.disagree')}
+                          </button>
+                        </div>
+                      );
+                    })()
                   ) : (
                     <div className="request-actions">
                       <button
                         className="btn"
-                        disabled={submitting || !!activeRentByBook[it.bookId] || !!disabledThreads[it.threadId]}
-                        title={
-                          activeRentByBook[it.bookId]
-                            ? (() => {
-                                const borrowerName = acceptedByBook[it.bookId]?.requesterName;
-                                return borrowerName
-                                  ? (t('requests.waitingForReturn', { name: borrowerName }) || `Dostępne gdy ${borrowerName} odda książkę`)
-                                  : (t('requests.bookAlreadyRented') || 'Book already rented');
-                              })()
-                            : (disabledThreads[it.threadId] ? (t('requests.requestCompleted') || 'This request already completed') : undefined)
-                        }
+                        disabled={submitting || !!disabledThreads[it.threadId]}
+                        title={disabledThreads[it.threadId] ? (t('requests.requestCompleted') || 'This request already completed') : undefined}
                         onClick={() => handleAgree(it)}
                       >
                         {t('messages.agree')}
@@ -856,6 +1180,50 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
                       isMine
                     />
                   </div>
+                  {(() => {
+                    const qe = myQueueByThread[it.threadId];
+                    if (!qe) return null;
+                    if (qe.status === 'accepted') {
+                      return (
+                        <div className="request-chip request-chip--queued">
+                          {t('requests.borrowerAccepted')}: {qe.proposedFrom} – {qe.proposedTo}
+                        </div>
+                      );
+                    }
+                    if (qe.status === 'declined') {
+                      // Wątek nadal aktywny — owner może zaproponować nowe daty
+                      return (
+                        <div className="request-chip request-chip--warning">
+                          {t('requests.borrowerDeclined')}
+                        </div>
+                      );
+                    }
+                    // status === 'proposed' — pokaż przyciski akceptacji
+                    return (
+                      <div className="proposed-date-banner">
+                        <div className="proposed-date-info">
+                          <strong>{t('requests.ownerProposedDate')}:</strong>{' '}
+                          {qe.proposedFrom} – {qe.proposedTo}
+                        </div>
+                        <div className="request-actions">
+                          <button
+                            className="btn"
+                            disabled={submitting}
+                            onClick={() => handleAcceptProposal(it, qe)}
+                          >
+                            {t('requests.acceptDate')}
+                          </button>
+                          <button
+                            className="btn btn--ghost"
+                            disabled={submitting}
+                            onClick={() => handleDeclineProposal(it, qe)}
+                          >
+                            {t('requests.declineDate')}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })()}
                   <div className="request-actions" />
                 </div>
               ))}

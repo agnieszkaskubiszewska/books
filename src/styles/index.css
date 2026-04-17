@@ -1670,9 +1670,70 @@ body.modal-open { overflow: hidden; }
   margin-top: var(--sp-2);
 }
 
+/* Request chips */
+.request-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  margin-top: var(--sp-3);
+}
+.request-chip--success { background: #d1fae5; color: #065f46; }
+.request-chip--archived { background: #f1f5f9; color: #64748b; }
+.request-chip--info { background: #dbeafe; color: #1e40af; }
+.request-chip--queued { background: #ede9fe; color: #4c1d95; }
+.request-chip--warning { background: #fef3c7; color: #92400e; }
+
+/* Propose-date inline panel */
+.propose-date-panel {
+  margin-top: var(--sp-3);
+  padding: var(--sp-3);
+  background: #f8fafc;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-lg);
+}
+.propose-date-hint {
+  font-size: 0.78rem;
+  color: #64748b;
+  margin-bottom: var(--sp-2);
+}
+
+/* Borrower proposed-date banner */
+.proposed-date-banner {
+  margin-top: var(--sp-3);
+  padding: var(--sp-3);
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: var(--r-lg);
+}
+.proposed-date-info {
+  font-size: 0.85rem;
+  color: #1e40af;
+  margin-bottom: var(--sp-2);
+}
+
+/* Ghost blue button */
+.btn--ghost-blue {
+  background: transparent;
+  border: 1.5px solid #3b82f6;
+  color: #2563eb;
+  border-radius: var(--r-lg);
+  padding: var(--sp-2) var(--sp-3);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.btn--ghost-blue:hover { background: #eff6ff; }
+.btn--ghost-blue:disabled { opacity: 0.4; cursor: not-allowed; }
+
 /* DayPilot event colors */
 .dp-event--active  { background: rgba(45,186,104,.15) !important; border-color: #34d399 !important; }
 .dp-event--upcoming { background: var(--c-bg) !important; border-color: var(--c-border) !important; }
+.dp-event--queued-accepted { background: rgba(99,102,241,.18) !important; border-color: #6366f1 !important; border-style: dashed !important; }
+.dp-event--queued-proposed { background: rgba(147,197,253,.35) !important; border-color: #3b82f6 !important; border-style: dotted !important; color: #1e3a5f !important; }
 
 /* Calendar list (mobile) */
 .calendar-list { padding: var(--sp-2); }
@@ -1703,6 +1764,16 @@ body.modal-open { overflow: hidden; }
 .calendar-list__item.dp-event--active {
   border-color: var(--c-green-tint-border);
   background: var(--c-green-tint);
+}
+.calendar-list__item.dp-event--queued-accepted {
+  border-color: #6366f1;
+  background: rgba(99,102,241,.08);
+  border-style: dashed;
+}
+.calendar-list__item.dp-event--queued-proposed {
+  border-color: #3b82f6;
+  background: rgba(147,197,253,.2);
+  border-style: dotted;
 }
 
 .calendar-list__title {

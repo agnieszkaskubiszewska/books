@@ -159,7 +159,19 @@
     "mine": "Moje prośby",
     "archivedTab": "Zarchiwizowane",
     "pending": "Oczekuje",
-    "owner": "Właściciel"
+    "owner": "Właściciel",
+    "proposeDate": "Zaproponuj inny termin",
+    "proposeNewDate": "Zaproponuj nowy termin",
+    "confirmProposal": "Potwierdź termin",
+    "cancelProposal": "Anuluj",
+    "proposeDateHint": "Książka wolna od: {{date}}",
+    "queuedBorrower": "Zakolejkowany wypożyczający",
+    "pendingProposal": "Oczekuje na akceptację",
+    "acceptDate": "Akceptuję termin",
+    "declineDate": "Odrzucam termin",
+    "ownerProposedDate": "Właściciel proponuje termin",
+    "borrowerDeclined": "Wypożyczający odrzucił proponowany termin",
+    "borrowerAccepted": "Wypożyczający zaakceptował termin"
   },
   "systemMemo": {
     "systemLabel": "System"
