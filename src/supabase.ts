@@ -260,6 +260,92 @@ export async function getOwnerName(ownerId: string): Promise<string> {
   return full;
 }
 
+// ── rent_queue helpers ──────────────────────────────────────────────────────
+
+export type QueueEntry = {
+  id: string;
+  bookId: string;
+  bookOwner: string;
+  borrower: string;
+  threadId: string;
+  proposedFrom: string; // YYYY-MM-DD
+  proposedTo: string;   // YYYY-MM-DD
+  status: 'proposed' | 'accepted' | 'declined';
+  createdAt: string;
+};
+
+export async function createQueueEntry(params: {
+  bookId: string;
+  bookOwner: string;
+  borrower: string;
+  threadId: string;
+  proposedFrom: string;
+  proposedTo: string;
+}): Promise<QueueEntry> {
+  const { data, error } = await supabase
+    .from('rent_queue')
+    .insert([{
+      book_id: params.bookId,
+      book_owner: params.bookOwner,
+      borrower: params.borrower,
+      thread_id: params.threadId,
+      proposed_from: params.proposedFrom,
+      proposed_to: params.proposedTo,
+      status: 'proposed',
+    }])
+    .select()
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return mapQueueRow(data);
+}
+
+export async function getQueueEntriesForBookIds(bookIds: string[]): Promise<QueueEntry[]> {
+  if (!bookIds.length) return [];
+  const { data, error } = await supabase
+    .from('rent_queue')
+    .select('*')
+    .in('book_id', bookIds)
+    .order('created_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data || []).map(mapQueueRow);
+}
+
+export async function getQueueEntriesByThreadIds(threadIds: string[]): Promise<QueueEntry[]> {
+  if (!threadIds.length) return [];
+  const { data, error } = await supabase
+    .from('rent_queue')
+    .select('*')
+    .in('thread_id', threadIds)
+    .order('created_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data || []).map(mapQueueRow);
+}
+
+export async function updateQueueEntryStatus(
+  queueId: string,
+  status: 'accepted' | 'declined'
+): Promise<void> {
+  const { error } = await supabase
+    .from('rent_queue')
+    .update({ status, updated_at: new Date().toISOString() })
+    .eq('id', queueId);
+  if (error) throw new Error(error.message);
+}
+
+function mapQueueRow(r: any): QueueEntry {
+  return {
+    id: String(r.id),
+    bookId: String(r.book_id),
+    bookOwner: String(r.book_owner),
+    borrower: String(r.borrower),
+    threadId: String(r.thread_id),
+    proposedFrom: String(r.proposed_from),
+    proposedTo: String(r.proposed_to),
+    status: r.status as QueueEntry['status'],
+    createdAt: String(r.created_at),
+  };
+}
+
 export async function submitUserRating(params: {
   rateeId: string;
   raterId: string;
