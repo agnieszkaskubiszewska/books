@@ -40,6 +40,15 @@ type RequestItem = {
   createdAt: string;
 };
 
+const REQUESTED_PERIOD_PREFIX = '!system: Requested rent period%';
+const OWNER_AGREED_PL = 'Owner zgodził się na wypożyczenie książki w wybranym przez Ciebie terminie';
+const OWNER_REFUSED_PL = 'Owner nie wyraził zgody na wypożyczenie książki w wybranym przez Ciebie terminie';
+const OWNER_AGREED_EN = '!system: Owner agreed to rent this book.';
+const OWNER_REFUSED_EN = '!system: Owner refused to rent this book.';
+const OWNER_CONFIRMED_EN = '!system: Owner confirmed the book was returned by the borrower.';
+const OWNER_REFUSED_EN_PREFIX = '!system: Owner refused';
+const OWNER_CONFIRMED_EN_PREFIX = '!system: Owner confirmed';
+
 function parseRequestedPeriod(body: string): { from?: string | null; to?: string | null } {
   // formats possible:
   // "!system: Requested rent period from YYYY-MM-DD to YYYY-MM-DD."
@@ -121,18 +130,27 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
   // Borrower: my requests
   const [myRequests, setMyRequests] = React.useState<RequestItem[]>([]);
   const [myArchivedThreads, setMyArchivedThreads] = React.useState<Record<string, boolean>>({});
+  const isComposing = React.useMemo(
+    () => !!searchParams.get('to') && !!searchParams.get('book'),
+    [searchParams]
+  );
+  const shouldLoadOwnerData = !isComposing && (viewMode === 'toMe' || viewMode === 'archived');
+  const shouldLoadBorrowerData = !isComposing && (viewMode === 'mine' || viewMode === 'archived');
 
   // Borrower view: fetch my own requests (messages I sent with requested period)
   React.useEffect(() => {
     (async () => {
       try {
+        if (!shouldLoadBorrowerData) {
+          return;
+        }
         const { data: auth } = await supabase.auth.getUser();
         const currentUserId = auth.user?.id;
         if (!currentUserId) { setMyRequests([]); return; }
         const { data: msgs, error: msgErr } = await supabase
           .from('messages')
           .select('id, sender_id, recipient_id, body, thread_id, created_at')
-          .ilike('body', '!system: Requested rent period%')
+          .like('body', REQUESTED_PERIOD_PREFIX)
           .eq('sender_id', currentUserId)
           .order('created_at', { ascending: false });
         if (msgErr) { setMyRequests([]); return; }
@@ -181,20 +199,28 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
         // UWAGA: liczy się kolejność czasowa - archiwalne TYLKO jeśli decyzja ownera jest PO najnowszej prośbie
         const tIds = Array.from(new Set(mine.map(m => m.threadId)));
         if (tIds.length > 0) {
+          const decisionBodies = [
+            OWNER_AGREED_PL,
+            OWNER_REFUSED_PL,
+            OWNER_AGREED_EN,
+            OWNER_REFUSED_EN,
+            OWNER_CONFIRMED_EN,
+          ];
           const { data: sysMsgs } = await supabase
             .from('messages')
             .select('thread_id, body, created_at')
-            .in('thread_id', tIds);
+            .in('thread_id', tIds)
+            .in('body', decisionBodies);
           const latestReqAt: Record<string, number> = {};
           mine.forEach(m => {
             const at = new Date(m.createdAt).getTime();
             latestReqAt[m.threadId] = Math.max(latestReqAt[m.threadId] || 0, at);
           });
           const isDecision = (b: string) =>
-            b.startsWith('Owner nie wyraził zgody') ||
-            b.startsWith('Owner zgodził się') ||
-            b.startsWith('!system: Owner refused') ||
-            b.startsWith('!system: Owner confirmed');
+            b === OWNER_REFUSED_PL ||
+            b === OWNER_AGREED_PL ||
+            b.startsWith(OWNER_REFUSED_EN_PREFIX) ||
+            b.startsWith(OWNER_CONFIRMED_EN_PREFIX);
           const map: Record<string, boolean> = {};
           (sysMsgs || []).forEach((m: any) => {
             const body = String(m.body || '');
@@ -231,7 +257,7 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
         setMyQueueByThread({});
       }
     })();
-  }, [searchParams]);
+  }, [searchParams, shouldLoadBorrowerData]);
 
   async function handleAgree(it: RequestItem) {
     try {
@@ -381,13 +407,7 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
   React.useEffect(() => {
     (async () => {
       try {
-        const composing = !!searchParams.get('to') && !!searchParams.get('book');
-        if (composing) {
-          setRequests({});
-          setActiveRentByBook({});
-          setAcceptedByBook({});
-          setDisabledThreads({});
-          setArchivedThreads({});
+        if (!shouldLoadOwnerData) {
           return;
         }
         const { data: auth } = await supabase.auth.getUser();
@@ -397,7 +417,7 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
         const { data: msgs, error: msgErr } = await supabase
           .from('messages')
           .select('id, sender_id, recipient_id, body, thread_id, created_at')
-          .ilike('body', '!system: Requested rent period%')
+          .like('body', REQUESTED_PERIOD_PREFIX)
           .eq('recipient_id', currentUserId)
           .order('created_at', { ascending: false });
         if (msgErr) { setRequests({}); return; }
@@ -555,7 +575,7 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
         setRequests({});
       }
     })();
-  }, [searchParams]);
+  }, [searchParams, shouldLoadOwnerData]);
 
   // ── Queue negotiation handlers ──────────────────────────────────────────
 
@@ -762,11 +782,10 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
   }, []);
 
   React.useEffect(() => {
-    const composing = !!searchParams.get('to') && !!searchParams.get('book');
-    if (!composing) {
+    if (!isComposing && viewMode === 'toMe') {
       refreshOwnerCalendar();
     }
-  }, [requests, searchParams]);
+  }, [isComposing, viewMode, refreshOwnerCalendar]);
 
   // Responsive: switch to list on mobile
   React.useEffect(() => {
@@ -815,7 +834,7 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
   };
 
   const bookParam = searchParams.get('book');
-  const hasCompose = !!searchParams.get('to') && !!bookParam;
+  const hasCompose = isComposing && !!bookParam;
 
   return (
     <section className="section">
