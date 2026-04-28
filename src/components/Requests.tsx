@@ -40,6 +40,15 @@ type RequestItem = {
   createdAt: string;
 };
 
+const REQUESTED_PERIOD_PREFIX = '!system: Requested rent period%';
+const OWNER_AGREED_PL = 'Owner zgodził się na wypożyczenie książki w wybranym przez Ciebie terminie';
+const OWNER_REFUSED_PL = 'Owner nie wyraził zgody na wypożyczenie książki w wybranym przez Ciebie terminie';
+const OWNER_AGREED_EN = '!system: Owner agreed to rent this book.';
+const OWNER_REFUSED_EN = '!system: Owner refused to rent this book.';
+const OWNER_CONFIRMED_EN = '!system: Owner confirmed the book was returned by the borrower.';
+const OWNER_REFUSED_EN_PREFIX = '!system: Owner refused';
+const OWNER_CONFIRMED_EN_PREFIX = '!system: Owner confirmed';
+
 function parseRequestedPeriod(body: string): { from?: string | null; to?: string | null } {
   // formats possible:
   // "!system: Requested rent period from YYYY-MM-DD to YYYY-MM-DD."
@@ -121,18 +130,27 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
   // Borrower: my requests
   const [myRequests, setMyRequests] = React.useState<RequestItem[]>([]);
   const [myArchivedThreads, setMyArchivedThreads] = React.useState<Record<string, boolean>>({});
+  const isComposing = React.useMemo(
+    () => !!searchParams.get('to') && !!searchParams.get('book'),
+    [searchParams]
+  );
+  const shouldLoadOwnerData = !isComposing && (viewMode === 'toMe' || viewMode === 'archived');
+  const shouldLoadBorrowerData = !isComposing && (viewMode === 'mine' || viewMode === 'archived');
 
   // Borrower view: fetch my own requests (messages I sent with requested period)
   React.useEffect(() => {
     (async () => {
       try {
+        if (!shouldLoadBorrowerData) {
+          return;
+        }
         const { data: auth } = await supabase.auth.getUser();
         const currentUserId = auth.user?.id;
         if (!currentUserId) { setMyRequests([]); return; }
         const { data: msgs, error: msgErr } = await supabase
           .from('messages')
           .select('id, sender_id, recipient_id, body, thread_id, created_at')
-          .ilike('body', '!system: Requested rent period%')
+          .like('body', REQUESTED_PERIOD_PREFIX)
           .eq('sender_id', currentUserId)
           .order('created_at', { ascending: false });
         if (msgErr) { setMyRequests([]); return; }
@@ -181,20 +199,28 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
         // UWAGA: liczy się kolejność czasowa - archiwalne TYLKO jeśli decyzja ownera jest PO najnowszej prośbie
         const tIds = Array.from(new Set(mine.map(m => m.threadId)));
         if (tIds.length > 0) {
+          const decisionBodies = [
+            OWNER_AGREED_PL,
+            OWNER_REFUSED_PL,
+            OWNER_AGREED_EN,
+            OWNER_REFUSED_EN,
+            OWNER_CONFIRMED_EN,
+          ];
           const { data: sysMsgs } = await supabase
             .from('messages')
             .select('thread_id, body, created_at')
-            .in('thread_id', tIds);
+            .in('thread_id', tIds)
+            .in('body', decisionBodies);
           const latestReqAt: Record<string, number> = {};
           mine.forEach(m => {
             const at = new Date(m.createdAt).getTime();
             latestReqAt[m.threadId] = Math.max(latestReqAt[m.threadId] || 0, at);
           });
           const isDecision = (b: string) =>
-            b.startsWith('Owner nie wyraził zgody') ||
-            b.startsWith('Owner zgodził się') ||
-            b.startsWith('!system: Owner refused') ||
-            b.startsWith('!system: Owner confirmed');
+            b === OWNER_REFUSED_PL ||
+            b === OWNER_AGREED_PL ||
+            b.startsWith(OWNER_REFUSED_EN_PREFIX) ||
+            b.startsWith(OWNER_CONFIRMED_EN_PREFIX);
           const map: Record<string, boolean> = {};
           (sysMsgs || []).forEach((m: any) => {
             const body = String(m.body || '');
@@ -231,7 +257,47 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
         setMyQueueByThread({});
       }
     })();
-  }, [searchParams]);
+  }, [searchParams, shouldLoadBorrowerData]);
+
+  /** Natychmiastowy wpis w kalendarzu po akceptacji — bez czekania na pełne odświeżenie z API. */
+  const applyOptimisticRentToCalendar = React.useCallback((it: RequestItem) => {
+    const startIso = it.periodFrom
+      ? dayjs(it.periodFrom).startOf('day').toISOString()
+      : dayjs().startOf('day').toISOString();
+    const endIso = it.periodTo
+      ? dayjs(it.periodTo).add(1, 'day').startOf('day').toISOString()
+      : dayjs().add(1, 'day').startOf('day').toISOString();
+    const now = dayjs();
+    const startDate = dayjs(startIso);
+    const endDate = dayjs(endIso);
+    const isActive = startDate.isBefore(now) && now.isBefore(endDate);
+    const cssClass = isActive ? 'dp-event--active' : 'dp-event--upcoming';
+    const newEvent = {
+      id: `rent_${it.bookId}_sync`,
+      start: startIso,
+      end: endIso,
+      resource: it.bookId,
+      text: it.requesterName || 'User',
+      cssClass,
+    } as any;
+    setCalResources(prev => {
+      if (prev.some(r => r.id === it.bookId)) return prev;
+      return [...prev, { id: it.bookId, name: it.bookTitle || it.bookId }];
+    });
+    setCalEvents(prev => {
+      const withoutOldRent = prev.filter(
+        (e: any) =>
+          !(
+            String(e.resource) === it.bookId &&
+            (e.cssClass === 'dp-event--active' || e.cssClass === 'dp-event--upcoming')
+          )
+      );
+      return [...withoutOldRent, newEvent];
+    });
+    if (it.periodTo) {
+      setActiveRentEndByBook(prev => ({ ...prev, [it.bookId]: String(it.periodTo) }));
+    }
+  }, []);
 
   async function handleAgree(it: RequestItem) {
     try {
@@ -273,19 +339,19 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
       });
       setActiveRentByBook(prev => ({ ...prev, [it.bookId]: true }));
       setAcceptedByBook(prev => ({ ...prev, [it.bookId]: { threadId: it.threadId, requesterId: it.requesterId, requesterName: it.requesterName } }));
-      // notify borrower (user-facing message)
+      applyOptimisticRentToCalendar(it);
+      // notify borrower + odświeżenie listy książek + kalendarz równolegle (wcześniej było sekwencyjnie — dużo wolniej)
       const systemBody = 'Owner zgodził się na wypożyczenie książki w wybranym przez Ciebie terminie';
-      await sbSendMessage({
-        senderId: currentUserId,
-        recipientId: it.requesterId,
-        body: systemBody,
-        threadId: it.threadId
-      });
-      // odśwież listę książek (BookList) w aplikacji
-      if (onRefreshBooks) {
-        await onRefreshBooks();
-      }
-      await refreshOwnerCalendar(); // reflect in calendar
+      await Promise.all([
+        sbSendMessage({
+          senderId: currentUserId,
+          recipientId: it.requesterId,
+          body: systemBody,
+          threadId: it.threadId
+        }),
+        onRefreshBooks ? onRefreshBooks() : Promise.resolve(),
+        refreshOwnerCalendar({ userId: currentUserId }),
+      ]);
       // keep request in list; for accepted borrower show finish controls
     } catch (e: any) {
       setError(e?.message ?? 'Failed to agree');
@@ -381,13 +447,7 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
   React.useEffect(() => {
     (async () => {
       try {
-        const composing = !!searchParams.get('to') && !!searchParams.get('book');
-        if (composing) {
-          setRequests({});
-          setActiveRentByBook({});
-          setAcceptedByBook({});
-          setDisabledThreads({});
-          setArchivedThreads({});
+        if (!shouldLoadOwnerData) {
           return;
         }
         const { data: auth } = await supabase.auth.getUser();
@@ -397,7 +457,7 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
         const { data: msgs, error: msgErr } = await supabase
           .from('messages')
           .select('id, sender_id, recipient_id, body, thread_id, created_at')
-          .ilike('body', '!system: Requested rent period%')
+          .like('body', REQUESTED_PERIOD_PREFIX)
           .eq('recipient_id', currentUserId)
           .order('created_at', { ascending: false });
         if (msgErr) { setRequests({}); return; }
@@ -555,7 +615,7 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
         setRequests({});
       }
     })();
-  }, [searchParams]);
+  }, [searchParams, shouldLoadOwnerData]);
 
   // ── Queue negotiation handlers ──────────────────────────────────────────
 
@@ -616,7 +676,7 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
       setProposingFor(null);
       setProposeFrom(null);
       setProposeTo(null);
-      await refreshOwnerCalendar();
+      await refreshOwnerCalendar({ userId: currentUserId });
     } catch (e: any) {
       setError(e?.message ?? 'Failed to propose date');
     } finally {
@@ -671,23 +731,46 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
   }
 
   // Build/refresh owner calendar (active rents per owned book)
-  const refreshOwnerCalendar = React.useCallback(async () => {
+  const refreshOwnerCalendar = React.useCallback(async (opts?: { userId?: string }) => {
     try {
-      const { data: auth } = await supabase.auth.getUser();
-      const currentUserId = auth.user?.id;
+      let currentUserId = opts?.userId;
+      if (!currentUserId) {
+        const { data: auth } = await supabase.auth.getUser();
+        currentUserId = auth.user?.id;
+      }
       if (!currentUserId) { setCalResources([]); setCalEvents([]); return; }
-      const { data: rentsRows } = await supabase
-        .from('rents')
-        .select('book_id, borrower, rent_from, rent_to, finished')
-        .eq('book_owner', currentUserId)
-        .eq('finished', false);
+
+      const [{ data: rentsRows }, { data: queueRows }] = await Promise.all([
+        supabase
+          .from('rents')
+          .select('book_id, borrower, rent_from, rent_to, finished')
+          .eq('book_owner', currentUserId)
+          .eq('finished', false),
+        supabase
+          .from('rent_queue')
+          .select('book_id, borrower, proposed_from, proposed_to, status')
+          .eq('book_owner', currentUserId)
+          .in('status', ['proposed', 'accepted']),
+      ]);
+
       const rents = rentsRows || [];
-      const bookIds = Array.from(new Set(rents.map((r: any) => String(r.book_id))));
-      const borrowerIds = Array.from(new Set(rents.map((r: any) => String(r.borrower))));
+      const queue = queueRows || [];
+      const bookIds = Array.from(new Set([
+        ...rents.map((r: any) => String(r.book_id)),
+        ...queue.map((r: any) => String(r.book_id)),
+      ]));
+      const borrowerIds = Array.from(
+        new Set([
+          ...rents.map((r: any) => String(r.borrower)),
+          ...queue.map((r: any) => String(r.borrower)),
+        ])
+      ).filter(Boolean);
+
       const [{ data: booksRows }, { data: usersRows }] = await Promise.all([
         (bookIds.length ? supabase.from('books').select('id, title').in('id', bookIds) : Promise.resolve({ data: [] as any })),
         (borrowerIds.length ? supabase.from('users').select('id, first_name, last_name, email').in('id', borrowerIds) : Promise.resolve({ data: [] as any })),
       ]) as any;
+
       const bookIdToTitle = new Map<string, string>((booksRows || []).map((b: any) => [String(b.id), String(b.title ?? '')]));
       const userIdToName = new Map<string, string>((usersRows || []).map((u: any) => {
         const first = (u.first_name || '').trim();
@@ -696,44 +779,8 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
         const fallback = (u.email || '').split('@')[0] || '';
         return [String(u.id), full || fallback];
       }));
-      // Also fetch queue entries for calendar display
-      const { data: queueRows } = await supabase
-        .from('rent_queue')
-        .select('book_id, borrower, proposed_from, proposed_to, status')
-        .eq('book_owner', currentUserId)
-        .in('status', ['proposed', 'accepted']);
-      const queueBorrowerIds = Array.from(new Set((queueRows || []).map((r: any) => String(r.borrower))));
-      let queueUsersRows: any[] = [];
-      if (queueBorrowerIds.length > 0) {
-        const { data: quRows } = await supabase
-          .from('users')
-          .select('id, first_name, last_name, email')
-          .in('id', queueBorrowerIds);
-        queueUsersRows = quRows || [];
-      }
-      const queueUserIdToName = new Map<string, string>([
-        ...Array.from(userIdToName.entries()),
-        ...queueUsersRows.map((u: any) => {
-          const first = (u.first_name || '').trim();
-          const last = (u.last_name || '').trim();
-          const full = [first, last].filter(Boolean).join(' ');
-          return [String(u.id), full || (u.email || '').split('@')[0] || ''] as [string, string];
-        }),
-      ]);
 
-      // Build all calendar resources (union of rent books + queue books)
-      const allBookIds = Array.from(new Set([
-        ...bookIds,
-        ...(queueRows || []).map((r: any) => String(r.book_id)),
-      ]));
-      // Resolve any extra book titles for queue-only books
-      const missingBookIds = allBookIds.filter(id => !bookIdToTitle.has(id));
-      if (missingBookIds.length > 0) {
-        const { data: extraBooks } = await supabase.from('books').select('id, title').in('id', missingBookIds);
-        (extraBooks || []).forEach((b: any) => bookIdToTitle.set(String(b.id), String(b.title ?? '')));
-      }
-
-      const resources = allBookIds.map(id => ({ id, name: bookIdToTitle.get(id) || id }));
+      const resources = bookIds.map(id => ({ id, name: bookIdToTitle.get(id) || id }));
       const now = dayjs();
       const activeEvents = rents.map((r: any, idx: number) => {
         const startIso = r.rent_from ? dayjs(r.rent_from).startOf('day').toISOString() : dayjs().startOf('day').toISOString();
@@ -746,10 +793,10 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
         const cssClass = isActive ? 'dp-event--active' : 'dp-event--upcoming';
         return { id: `${String(r.book_id)}_${idx}`, start: startIso, end: endIso, resource: String(r.book_id), text: borrower, cssClass } as any;
       });
-      const queueEvents = (queueRows || []).map((r: any, idx: number) => {
+      const queueEvents = queue.map((r: any, idx: number) => {
         const startIso = dayjs(r.proposed_from).startOf('day').toISOString();
         const endIso = dayjs(r.proposed_to).add(1, 'day').startOf('day').toISOString();
-        const borrower = queueUserIdToName.get(String(r.borrower)) || 'User';
+        const borrower = userIdToName.get(String(r.borrower)) || 'User';
         const cssClass = r.status === 'accepted' ? 'dp-event--queued-accepted' : 'dp-event--queued-proposed';
         return { id: `q_${String(r.book_id)}_${idx}`, start: startIso, end: endIso, resource: String(r.book_id), text: borrower, cssClass } as any;
       });
@@ -762,11 +809,10 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
   }, []);
 
   React.useEffect(() => {
-    const composing = !!searchParams.get('to') && !!searchParams.get('book');
-    if (!composing) {
+    if (!isComposing && viewMode === 'toMe') {
       refreshOwnerCalendar();
     }
-  }, [requests, searchParams]);
+  }, [isComposing, viewMode, refreshOwnerCalendar]);
 
   // Responsive: switch to list on mobile
   React.useEffect(() => {
@@ -815,7 +861,7 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
   };
 
   const bookParam = searchParams.get('book');
-  const hasCompose = !!searchParams.get('to') && !!bookParam;
+  const hasCompose = isComposing && !!bookParam;
 
   return (
     <section className="section">
