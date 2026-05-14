@@ -11,6 +11,7 @@ type RentEntry = {
   title: string;
   rent_from: string | null;
   rent_to: string | null;
+  finished: boolean;
   role: 'owner' | 'borrower';
   counterpartName: string;
 };
@@ -110,6 +111,7 @@ function UserDetails({ user, onAvatarPaletteChange }: { user: any; onAvatarPalet
             title: r.book?.title || 'Książka',
             rent_from: r.rent_from ?? null,
             rent_to: r.rent_to ?? null,
+            finished: !!r.finished,
             role: isOwner ? 'owner' : 'borrower',
             counterpartName: userNameMap[counterpartId] || '—',
           };
@@ -332,13 +334,13 @@ function UserDetails({ user, onAvatarPaletteChange }: { user: any; onAvatarPalet
                             gap: 2,
                             padding: '10px 12px',
                             borderRadius: 'var(--r-md)',
-                            background: r.rent_to ? 'var(--c-bg)' : 'rgba(45,186,104,0.06)',
+                            background: r.finished ? 'var(--c-bg)' : 'rgba(45,186,104,0.06)',
                             border: '1px solid var(--c-border)',
                           }}
                         >
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                             <strong style={{ fontSize: '0.9rem' }}>{r.title}</strong>
-                            {r.rent_to ? (
+                            {r.finished ? (
                               <span style={{ fontSize: '0.75rem', color: 'var(--c-green)', fontWeight: 600, whiteSpace: 'nowrap' }}>✓ {t('user.returned')}</span>
                             ) : (
                               <span style={{ fontSize: '0.75rem', color: 'var(--c-green)', fontWeight: 600, whiteSpace: 'nowrap' }}>{t('user.currentLendings')}</span>
@@ -370,13 +372,13 @@ function UserDetails({ user, onAvatarPaletteChange }: { user: any; onAvatarPalet
                             gap: 2,
                             padding: '10px 12px',
                             borderRadius: 'var(--r-md)',
-                            background: r.rent_to ? 'var(--c-bg)' : 'rgba(45,186,104,0.06)',
+                            background: r.finished ? 'var(--c-bg)' : 'rgba(45,186,104,0.06)',
                             border: '1px solid var(--c-border)',
                           }}
                         >
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                             <strong style={{ fontSize: '0.9rem' }}>{r.title}</strong>
-                            {r.rent_to ? (
+                            {r.finished ? (
                               <span style={{ fontSize: '0.75rem', color: 'var(--c-green)', fontWeight: 600, whiteSpace: 'nowrap' }}>✓ {t('user.returned')}</span>
                             ) : (
                               <span style={{ fontSize: '0.75rem', color: 'var(--c-green)', fontWeight: 600, whiteSpace: 'nowrap' }}>{t('user.currentLendings')}</span>
