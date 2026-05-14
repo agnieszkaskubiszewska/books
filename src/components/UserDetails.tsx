@@ -175,6 +175,8 @@ function UserDetails({ user, onAvatarPaletteChange }: { user: any; onAvatarPalet
   const last = (dbUser?.last_name || user?.lastName || '').trim() || inferredLast;
   const email = dbUser?.email || user?.email || '';
 
+  const [historyTab, setHistoryTab] = React.useState<'borrower' | 'owner'>('borrower');
+
   const currentOwner = currentRents.filter(r => r.role === 'owner');
   const currentBorrower = currentRents.filter(r => r.role === 'borrower');
   const histOwner = rentHistory.filter(r => r.role === 'owner');
@@ -182,13 +184,6 @@ function UserDetails({ user, onAvatarPaletteChange }: { user: any; onAvatarPalet
 
   const hasOwnerActivity = currentOwner.length > 0 || histOwner.length > 0;
   const hasBorrowerActivity = currentBorrower.length > 0 || histBorrower.length > 0;
-
-  const renderDateRange = (from: string | null, to: string | null) => {
-    const f = formatDate(from);
-    const t2 = formatDate(to);
-    if (from || to) return ` (${f} – ${t2})`;
-    return '';
-  };
 
   return (
     <section className="section">
@@ -301,78 +296,99 @@ function UserDetails({ user, onAvatarPaletteChange }: { user: any; onAvatarPalet
             <p style={{ marginTop: 8 }}>{t('user.noRentHistory')}</p>
           ) : (
             <>
-              {hasOwnerActivity && (
-                <div style={{ marginTop: 12 }}>
-                  <h3 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: 8 }}>{t('user.rentHistoryOwner')}</h3>
-                  {currentOwner.length > 0 && (
-                    <>
-                      <p style={{ fontSize: '0.8rem', color: 'var(--c-text-muted)', fontWeight: 500, marginBottom: 4 }}>{t('user.currentLendings')}</p>
-                      <ul style={{ marginBottom: 8 }}>
-                        {currentOwner.map(r => (
-                          <li key={r.id} style={{ margin: '4px 0' }}>
-                            <strong>{r.title}</strong>
-                            {' — '}
-                            {t('user.borrowedBy', { name: r.counterpartName })}
-                            {renderDateRange(r.rent_from, r.rent_to)}
-                          </li>
-                        ))}
-                      </ul>
-                    </>
-                  )}
-                  {histOwner.length > 0 && (
-                    <>
-                      <p style={{ fontSize: '0.8rem', color: 'var(--c-text-muted)', fontWeight: 500, marginBottom: 4 }}>{t('user.pastLendings')}</p>
-                      <ul>
-                        {histOwner.map(r => (
-                          <li key={r.id} style={{ margin: '4px 0', color: '#64748b' }}>
-                            <strong>{r.title}</strong>
-                            {' — '}
-                            {t('user.borrowedBy', { name: r.counterpartName })}
-                            {renderDateRange(r.rent_from, r.rent_to)}
-                            {' '}
-                            <span style={{ color: 'var(--c-green)', fontSize: '0.8rem' }}>✓ {t('user.returned')}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </>
+              <div className="filter-group compact" style={{ marginTop: 12 }}>
+                <div className="toggle-group" role="tablist" aria-label="Historia wypożyczeń">
+                  <button
+                    type="button"
+                    className={`toggle-pill toggle-pill--sm ${historyTab === 'borrower' ? 'active' : ''}`}
+                    aria-pressed={historyTab === 'borrower'}
+                    onClick={() => setHistoryTab('borrower')}
+                  >
+                    {t('user.rentHistoryBorrower')}
+                  </button>
+                  <button
+                    type="button"
+                    className={`toggle-pill toggle-pill--sm ${historyTab === 'owner' ? 'active' : ''}`}
+                    aria-pressed={historyTab === 'owner'}
+                    onClick={() => setHistoryTab('owner')}
+                  >
+                    {t('user.rentHistoryOwner')}
+                  </button>
+                </div>
+              </div>
+
+              {historyTab === 'borrower' && (
+                <div style={{ marginTop: 16 }}>
+                  {!hasBorrowerActivity ? (
+                    <p style={{ color: '#64748b', fontSize: '0.875rem' }}>{t('user.noRentHistory')}</p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {[...currentBorrower, ...histBorrower].map(r => (
+                        <div
+                          key={r.id}
+                          style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 2,
+                            padding: '10px 12px',
+                            borderRadius: 'var(--r-md)',
+                            background: r.rent_to ? 'var(--c-bg)' : 'rgba(45,186,104,0.06)',
+                            border: '1px solid var(--c-border)',
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                            <strong style={{ fontSize: '0.9rem' }}>{r.title}</strong>
+                            {r.rent_to ? (
+                              <span style={{ fontSize: '0.75rem', color: 'var(--c-green)', fontWeight: 600, whiteSpace: 'nowrap' }}>✓ {t('user.returned')}</span>
+                            ) : (
+                              <span style={{ fontSize: '0.75rem', color: 'var(--c-green)', fontWeight: 600, whiteSpace: 'nowrap' }}>{t('user.currentLendings')}</span>
+                            )}
+                          </div>
+                          <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{t('user.fromOwner', { name: r.counterpartName })}</div>
+                          {(r.rent_from || r.rent_to) && (
+                            <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{formatDate(r.rent_from)} – {formatDate(r.rent_to)}</div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
               )}
 
-              {hasBorrowerActivity && (
-                <div style={{ marginTop: hasOwnerActivity ? 16 : 12, borderTop: hasOwnerActivity ? '1px solid var(--c-border)' : 'none', paddingTop: hasOwnerActivity ? 12 : 0 }}>
-                  <h3 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: 8 }}>{t('user.rentHistoryBorrower')}</h3>
-                  {currentBorrower.length > 0 && (
-                    <>
-                      <p style={{ fontSize: '0.8rem', color: 'var(--c-text-muted)', fontWeight: 500, marginBottom: 4 }}>{t('user.currentLendings')}</p>
-                      <ul style={{ marginBottom: 8 }}>
-                        {currentBorrower.map(r => (
-                          <li key={r.id} style={{ margin: '4px 0' }}>
-                            <strong>{r.title}</strong>
-                            {' — '}
-                            {t('user.fromOwner', { name: r.counterpartName })}
-                            {renderDateRange(r.rent_from, r.rent_to)}
-                          </li>
-                        ))}
-                      </ul>
-                    </>
-                  )}
-                  {histBorrower.length > 0 && (
-                    <>
-                      <p style={{ fontSize: '0.8rem', color: 'var(--c-text-muted)', fontWeight: 500, marginBottom: 4 }}>{t('user.pastLendings')}</p>
-                      <ul>
-                        {histBorrower.map(r => (
-                          <li key={r.id} style={{ margin: '4px 0', color: '#64748b' }}>
-                            <strong>{r.title}</strong>
-                            {' — '}
-                            {t('user.fromOwner', { name: r.counterpartName })}
-                            {renderDateRange(r.rent_from, r.rent_to)}
-                            {' '}
-                            <span style={{ color: 'var(--c-green)', fontSize: '0.8rem' }}>✓ {t('user.returned')}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </>
+              {historyTab === 'owner' && (
+                <div style={{ marginTop: 16 }}>
+                  {!hasOwnerActivity ? (
+                    <p style={{ color: '#64748b', fontSize: '0.875rem' }}>{t('user.noRentHistory')}</p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {[...currentOwner, ...histOwner].map(r => (
+                        <div
+                          key={r.id}
+                          style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 2,
+                            padding: '10px 12px',
+                            borderRadius: 'var(--r-md)',
+                            background: r.rent_to ? 'var(--c-bg)' : 'rgba(45,186,104,0.06)',
+                            border: '1px solid var(--c-border)',
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                            <strong style={{ fontSize: '0.9rem' }}>{r.title}</strong>
+                            {r.rent_to ? (
+                              <span style={{ fontSize: '0.75rem', color: 'var(--c-green)', fontWeight: 600, whiteSpace: 'nowrap' }}>✓ {t('user.returned')}</span>
+                            ) : (
+                              <span style={{ fontSize: '0.75rem', color: 'var(--c-green)', fontWeight: 600, whiteSpace: 'nowrap' }}>{t('user.currentLendings')}</span>
+                            )}
+                          </div>
+                          <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{t('user.borrowedBy', { name: r.counterpartName })}</div>
+                          {(r.rent_from || r.rent_to) && (
+                            <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{formatDate(r.rent_from)} – {formatDate(r.rent_to)}</div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
               )}
