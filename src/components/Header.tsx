@@ -180,12 +180,13 @@ const handleSectionClick = (section: Section) => {
             {isLoggedIn && user ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Facehash
-                  name={user.email || user.name}
+                  name={[user.firstName, user.lastName].filter(Boolean).join(' ') || user.email || user.name}
                   size={28}
                   colors={AVATAR_PALETTES[avatarPalette] ?? AVATAR_PALETTES[0]}
                   showInitial={false}
                   intensity3d="subtle"
                   interactive={false}
+                  enableBlink={false}
                   style={{ borderRadius: '50%', overflow: 'hidden', flexShrink: 0 }}
                 />
                 <span className="user-name">{user.firstName + ' ' + user.lastName || user.name}

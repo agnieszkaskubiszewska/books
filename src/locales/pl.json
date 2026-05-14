@@ -71,7 +71,13 @@
     "replyWillBeSentTo": "wiadomość zostanie przekazana do",
     "writeToOwner": "Napisz wiadomość do właściciela...",
     "cancel": "Anuluj",
-    "send": "Wyślij"
+    "send": "Wyślij",
+    "you": "Ty",
+    "mustBeLoggedIn": "Musisz być zalogowany",
+    "thankYouForRating": "Dziękujemy za ocenę!",
+    "ratingFailed": "Nie udało się zapisać oceny",
+    "rateUser": "Oceń {{name}}",
+    "rateOnce": "Możesz ocenić tylko raz po akceptacji wypożyczenia."
   },
   "user": {
     "details": "Szczegóły użytkownika",
@@ -87,7 +93,26 @@
     "about": "O mnie",
     "aboutPlaceholder": "Napisz coś o sobie...",
     "saveAbout": "Zapisz",
-    "saved": "Zapisano!"
+    "saved": "Zapisano!",
+    "avatarAppearance": "Wygląd avatara",
+    "palette": "Paleta {{n}}",
+    "rentHistory": "Historia wypożyczeń",
+    "rentHistoryOwner": "Jako właściciel",
+    "rentHistoryBorrower": "Jako wypożyczający",
+    "noRentHistory": "Brak historii wypożyczeń",
+    "borrowedBy": "Wypożycza: {{name}}",
+    "fromOwner": "Właściciel: {{name}}",
+    "currentLendings": "Aktualnie",
+    "pastLendings": "Poprzednie",
+    "returned": "Zwrócona"
+  },
+  "userPanel": {
+    "notFound": "Nie znaleziono użytkownika.",
+    "sendMessage": "Wyślij wiadomość",
+    "writeMessageTo": "Napisz wiadomość do {{name}}...",
+    "sending": "Wysyłanie...",
+    "offeredBooks": "Książki oferowane przez {{name}} ({{count}})",
+    "noBooks": "Ten użytkownik nie oferuje jeszcze żadnych książek."
   },
   "add": {
     "title": "Dodaj nową książkę",

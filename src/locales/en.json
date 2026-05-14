@@ -71,7 +71,13 @@
     "replyWillBeSentTo": "message will be sent to",
     "writeToOwner": "Write a message to the owner...",
     "cancel": "Cancel",
-    "send": "Send"
+    "send": "Send",
+    "you": "You",
+    "mustBeLoggedIn": "You must be logged in",
+    "thankYouForRating": "Thank you for rating!",
+    "ratingFailed": "Failed to save rating",
+    "rateUser": "Rate {{name}}",
+    "rateOnce": "You can rate only once after the rental is accepted."
   },
   "user": {
     "details": "User details",
@@ -87,7 +93,26 @@
     "about": "About me",
     "aboutPlaceholder": "Write something about yourself...",
     "saveAbout": "Save",
-    "saved": "Saved!"
+    "saved": "Saved!",
+    "avatarAppearance": "Avatar appearance",
+    "palette": "Palette {{n}}",
+    "rentHistory": "Rental history",
+    "rentHistoryOwner": "As owner",
+    "rentHistoryBorrower": "As borrower",
+    "noRentHistory": "No rental history",
+    "borrowedBy": "Borrowed by: {{name}}",
+    "fromOwner": "Owner: {{name}}",
+    "currentLendings": "Current",
+    "pastLendings": "Past",
+    "returned": "Returned"
+  },
+  "userPanel": {
+    "notFound": "User not found.",
+    "sendMessage": "Send message",
+    "writeMessageTo": "Write a message to {{name}}...",
+    "sending": "Sending...",
+    "offeredBooks": "Books offered by {{name}} ({{count}})",
+    "noBooks": "This user has no books yet."
   },
   "add": {
     "title": "Add a new book",

@@ -42,13 +42,13 @@ function getStylesForContent(content: string) {
   };
 }
 
-function formatDate(dateStr: string, lang: string): string {
+function formatDate(dateStr: string, _lang: string): string {
   const date = new Date(dateStr);
-  return date.toLocaleDateString(lang === 'pl' ? 'pl-PL' : 'en-GB', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
+  if (isNaN(date.getTime())) return dateStr;
+  const dd = String(date.getDate()).padStart(2, '0');
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const yyyy = date.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
 }
 
 function formatRentPeriodContent(content: string, lang: string): string | null {
