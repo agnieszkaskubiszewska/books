@@ -348,7 +348,7 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
               )}
               {!book.rent && requestedRentDates && requestedRentDates[book.id]?.to && (
                 <p style={{ color: '#334155', fontWeight: 600 }}>
-                  {t('books.availableFrom')}: {dayjs(requestedRentDates[book.id]?.to!).format('DD.MM.YYYY')}
+                  {t('books.availableFrom')}: {dayjs(requestedRentDates[book.id]?.to!).format('DD/MM/YYYY')}
                 </p>
               )}
 

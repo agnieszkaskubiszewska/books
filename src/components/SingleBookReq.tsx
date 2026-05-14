@@ -1,6 +1,7 @@
 import React from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { formatDate } from '../utils/dateFormat';
 
 type SingleBookReqProps = {
   bookTitle?: string | null;
@@ -24,7 +25,7 @@ const SingleBookReq: React.FC<SingleBookReqProps> = (props) => {
     <div>
       <p><strong>{t('requests.book') || 'Requested book'}:</strong> {bookTitle}</p>
       <p><strong>{counterpartyLabel}:</strong> {requesterName}</p>
-      <p><strong>{t('requests.period') || 'Period'}:</strong> {periodFrom} - {periodTo}</p>
+      <p><strong>{t('requests.period') || 'Period'}:</strong> {formatDate(periodFrom)} – {formatDate(periodTo)}</p>
       <p><strong>{t('requests.createdAt') || 'Created At'}:</strong> {createdAt}</p>
     </div>
   );

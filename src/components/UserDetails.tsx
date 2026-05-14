@@ -4,6 +4,16 @@ import { updateAvatarPalette } from '../supabase';
 import { useTranslation } from 'react-i18next';
 import { Facehash } from 'facehash';
 import { AVATAR_PALETTES } from '../avatarPalettes';
+import { formatDate } from '../utils/dateFormat';
+
+type RentEntry = {
+  id: string;
+  title: string;
+  rent_from: string | null;
+  rent_to: string | null;
+  role: 'owner' | 'borrower';
+  counterpartName: string;
+};
 
 function UserDetails({ user, onAvatarPaletteChange }: { user: any; onAvatarPaletteChange?: (p: number) => void }) {
   const { t } = useTranslation();
@@ -15,8 +25,8 @@ function UserDetails({ user, onAvatarPaletteChange }: { user: any; onAvatarPalet
   const [savedAbout, setSavedAbout] = React.useState<boolean>(false);
   const [authUserId, setAuthUserId] = React.useState<string | null>(null);
   const [selectedPalette, setSelectedPalette] = React.useState<number>(0);
-  const [currentRents, setCurrentRents] = React.useState<Array<{ id: string; title: string; rent_from: string | null; rent_to: string | null; role: 'owner' | 'borrower' }>>([]);
-  const [rentHistory, setRentHistory] = React.useState<Array<{ id: string; title: string; rent_from: string | null; rent_to: string | null; role: 'owner' | 'borrower' }>>([]);
+  const [currentRents, setCurrentRents] = React.useState<RentEntry[]>([]);
+  const [rentHistory, setRentHistory] = React.useState<RentEntry[]>([]);
   const [ratingOwner, setRatingOwner] = React.useState<number | null>(null);
   const [ratingBorrower, setRatingBorrower] = React.useState<number | null>(null);
   const ratingOverall = React.useMemo(() => {
@@ -51,45 +61,64 @@ function UserDetails({ user, onAvatarPaletteChange }: { user: any; onAvatarPalet
     })();
   }, []);
 
-  // Fetch current rents and history for logged-in user
   React.useEffect(() => {
     (async () => {
       try {
         const { data: auth } = await supabase.auth.getUser();
         const authUserId = auth.user?.id;
         if (!authUserId) { setCurrentRents([]); setRentHistory([]); return; }
-        // Current (finished = false)
-        const { data: openRows, error: openErr } = await supabase
-          .from('rents')
-          .select('id, book_id, book:book_id (title), rent_from, rent_to, finished, book_owner, borrower')
-          .eq('finished', false)
-          .or(`book_owner.eq.${authUserId},borrower.eq.${authUserId}`);
-        if (openErr) { console.error('Error fetching current rents:', openErr); setCurrentRents([]); } else {
-          setCurrentRents((openRows || []).map((r: any) => ({
+
+        const [{ data: openRows, error: openErr }, { data: histRows, error: histErr }] = await Promise.all([
+          supabase
+            .from('rents')
+            .select('id, book_id, book:book_id (title), rent_from, rent_to, finished, book_owner, borrower')
+            .eq('finished', false)
+            .or(`book_owner.eq.${authUserId},borrower.eq.${authUserId}`),
+          supabase
+            .from('rents')
+            .select('id, book_id, book:book_id (title), rent_from, rent_to, finished, book_owner, borrower')
+            .eq('finished', true)
+            .or(`book_owner.eq.${authUserId},borrower.eq.${authUserId}`)
+            .order('rent_from', { ascending: false }),
+        ]);
+
+        // Collect unique counterpart IDs to resolve names
+        const allRows = [...(openRows || []), ...(histRows || [])];
+        const counterpartIds = new Set<string>();
+        allRows.forEach((r: any) => {
+          const otherId = r.book_owner === authUserId ? String(r.borrower) : String(r.book_owner);
+          if (otherId && otherId !== 'null') counterpartIds.add(otherId);
+        });
+
+        let userNameMap: Record<string, string> = {};
+        if (counterpartIds.size > 0) {
+          const { data: usersData } = await supabase
+            .from('users')
+            .select('id, first_name, last_name')
+            .in('id', Array.from(counterpartIds));
+          (usersData || []).forEach((u: any) => {
+            const name = [u.first_name, u.last_name].filter(Boolean).join(' ');
+            userNameMap[String(u.id)] = name || 'Użytkownik';
+          });
+        }
+
+        const mapRow = (r: any): RentEntry => {
+          const isOwner = r.book_owner === authUserId;
+          const counterpartId = isOwner ? String(r.borrower) : String(r.book_owner);
+          return {
             id: String(r.id),
-            title: r.book?.title || 'Book',
+            title: r.book?.title || 'Książka',
             rent_from: r.rent_from ?? null,
             rent_to: r.rent_to ?? null,
-            role: r.book_owner === authUserId ? 'owner' : 'borrower'
-          })));
-        }
-        // History (finished = true)
-        const { data: histRows, error: histErr } = await supabase
-          .from('rents')
-          .select('id, book_id, book:book_id (title), rent_from, rent_to, finished, book_owner, borrower')
-          .eq('finished', true)
-          .or(`book_owner.eq.${authUserId},borrower.eq.${authUserId}`)
-          .order('rent_from', { ascending: false });
-        if (histErr) { console.error('Error fetching rent history:', histErr); setRentHistory([]); } else {
-          setRentHistory((histRows || []).map((r: any) => ({
-            id: String(r.id),
-            title: r.book?.title || 'Book',
-            rent_from: r.rent_from ?? null,
-            rent_to: r.rent_to ?? null,
-            role: r.book_owner === authUserId ? 'owner' : 'borrower'
-          })));
-        }
-        // Initial ratings (compute from user_ratings)
+            role: isOwner ? 'owner' : 'borrower',
+            counterpartName: userNameMap[counterpartId] || '—',
+          };
+        };
+
+        if (!openErr) setCurrentRents((openRows || []).map(mapRow));
+        if (!histErr) setRentHistory((histRows || []).map(mapRow));
+
+        // Ratings
         const { data: ratingsRows, error: ratingsErr } = await supabase
           .from('user_ratings')
           .select('role, rating')
@@ -100,7 +129,7 @@ function UserDetails({ user, onAvatarPaletteChange }: { user: any; onAvatarPalet
           setRatingOwner(ownerVals.length ? ownerVals.reduce((a, b) => a + b, 0) / ownerVals.length : null);
           setRatingBorrower(borrowerVals.length ? borrowerVals.reduce((a, b) => a + b, 0) / borrowerVals.length : null);
         }
-        // Realtime updates for ratings
+
         const channel = supabase
           .channel(`user_ratings_${authUserId}`)
           .on('postgres_changes', { event: '*', schema: 'public', table: 'user_ratings', filter: `ratee_id=eq.${authUserId}` }, async () => {
@@ -146,6 +175,21 @@ function UserDetails({ user, onAvatarPaletteChange }: { user: any; onAvatarPalet
   const last = (dbUser?.last_name || user?.lastName || '').trim() || inferredLast;
   const email = dbUser?.email || user?.email || '';
 
+  const currentOwner = currentRents.filter(r => r.role === 'owner');
+  const currentBorrower = currentRents.filter(r => r.role === 'borrower');
+  const histOwner = rentHistory.filter(r => r.role === 'owner');
+  const histBorrower = rentHistory.filter(r => r.role === 'borrower');
+
+  const hasOwnerActivity = currentOwner.length > 0 || histOwner.length > 0;
+  const hasBorrowerActivity = currentBorrower.length > 0 || histBorrower.length > 0;
+
+  const renderDateRange = (from: string | null, to: string | null) => {
+    const f = formatDate(from);
+    const t2 = formatDate(to);
+    if (from || to) return ` (${f} – ${t2})`;
+    return '';
+  };
+
   return (
     <section className="section">
       <div className="container messages-hero">
@@ -189,7 +233,7 @@ function UserDetails({ user, onAvatarPaletteChange }: { user: any; onAvatarPalet
             </div>
           </div>
           <div style={{ marginTop: 'var(--sp-5)', borderTop: '1px solid var(--c-border)', paddingTop: 'var(--sp-4)' }}>
-            <label style={{ display: 'block', fontWeight: 600, marginBottom: 'var(--sp-3)', color: 'var(--c-text)' }}>Wygląd avatara</label>
+            <label style={{ display: 'block', fontWeight: 600, marginBottom: 'var(--sp-3)', color: 'var(--c-text)' }}>{t('user.avatarAppearance')}</label>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
               {AVATAR_PALETTES.map((palette, i) => (
                 <button
@@ -212,7 +256,7 @@ function UserDetails({ user, onAvatarPaletteChange }: { user: any; onAvatarPalet
                     outlineOffset: 2,
                     transition: 'outline 0.15s',
                   }}
-                  title={`Paleta ${i + 1}`}
+                  title={t('user.palette', { n: i + 1 }) as string}
                 >
                   <Facehash
                     name={first || 'User'}
@@ -221,6 +265,7 @@ function UserDetails({ user, onAvatarPaletteChange }: { user: any; onAvatarPalet
                     showInitial={false}
                     intensity3d="subtle"
                     interactive={false}
+                    enableBlink={false}
                     style={{ borderRadius: '50%', overflow: 'hidden', display: 'block' }}
                   />
                 </button>
@@ -231,59 +276,112 @@ function UserDetails({ user, onAvatarPaletteChange }: { user: any; onAvatarPalet
       )}
         </div>
         <div className="card user-rating">
-<h1>{t('user.rating')}</h1>
-{ratingOverall === null ? (
-  <p>{t('user.noRating')}</p>
-) : (
-  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>
-    <div className="rating-table" style={{ justifyContent: 'flex-start' }}>
-      {[1,2,3,4,5].map(i => (
-        <span key={i} className={`book-emoji ${i <= Math.round(ratingOverall) ? 'active' : ''}`} aria-hidden="true" style={{ fontSize: 22 }}>
-          ⭐
-        </span>
-      ))}
+          <h1>{t('user.rating')}</h1>
+          {ratingOverall === null ? (
+            <p>{t('user.noRating')}</p>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>
+              <div className="rating-table" style={{ justifyContent: 'flex-start' }}>
+                {[1,2,3,4,5].map(i => (
+                  <span key={i} className={`book-emoji ${i <= Math.round(ratingOverall) ? 'active' : ''}`} aria-hidden="true" style={{ fontSize: 22 }}>
+                    ⭐
+                  </span>
+                ))}
+              </div>
+              <div style={{ fontWeight: 500 }}>{ratingOverall.toFixed(2)}</div>
+            </div>
+          )}
+        </div>
+
+        {/* Historia wypożyczeń */}
+        <div className="card current-share">
+          <h1>{t('user.rentHistory')}</h1>
+
+          {!hasOwnerActivity && !hasBorrowerActivity ? (
+            <p style={{ marginTop: 8 }}>{t('user.noRentHistory')}</p>
+          ) : (
+            <>
+              {hasOwnerActivity && (
+                <div style={{ marginTop: 12 }}>
+                  <h3 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: 8 }}>{t('user.rentHistoryOwner')}</h3>
+                  {currentOwner.length > 0 && (
+                    <>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--c-text-muted)', fontWeight: 500, marginBottom: 4 }}>{t('user.currentLendings')}</p>
+                      <ul style={{ marginBottom: 8 }}>
+                        {currentOwner.map(r => (
+                          <li key={r.id} style={{ margin: '4px 0' }}>
+                            <strong>{r.title}</strong>
+                            {' — '}
+                            {t('user.borrowedBy', { name: r.counterpartName })}
+                            {renderDateRange(r.rent_from, r.rent_to)}
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                  {histOwner.length > 0 && (
+                    <>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--c-text-muted)', fontWeight: 500, marginBottom: 4 }}>{t('user.pastLendings')}</p>
+                      <ul>
+                        {histOwner.map(r => (
+                          <li key={r.id} style={{ margin: '4px 0', color: '#64748b' }}>
+                            <strong>{r.title}</strong>
+                            {' — '}
+                            {t('user.borrowedBy', { name: r.counterpartName })}
+                            {renderDateRange(r.rent_from, r.rent_to)}
+                            {' '}
+                            <span style={{ color: 'var(--c-green)', fontSize: '0.8rem' }}>✓ {t('user.returned')}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {hasBorrowerActivity && (
+                <div style={{ marginTop: hasOwnerActivity ? 16 : 12, borderTop: hasOwnerActivity ? '1px solid var(--c-border)' : 'none', paddingTop: hasOwnerActivity ? 12 : 0 }}>
+                  <h3 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: 8 }}>{t('user.rentHistoryBorrower')}</h3>
+                  {currentBorrower.length > 0 && (
+                    <>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--c-text-muted)', fontWeight: 500, marginBottom: 4 }}>{t('user.currentLendings')}</p>
+                      <ul style={{ marginBottom: 8 }}>
+                        {currentBorrower.map(r => (
+                          <li key={r.id} style={{ margin: '4px 0' }}>
+                            <strong>{r.title}</strong>
+                            {' — '}
+                            {t('user.fromOwner', { name: r.counterpartName })}
+                            {renderDateRange(r.rent_from, r.rent_to)}
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                  {histBorrower.length > 0 && (
+                    <>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--c-text-muted)', fontWeight: 500, marginBottom: 4 }}>{t('user.pastLendings')}</p>
+                      <ul>
+                        {histBorrower.map(r => (
+                          <li key={r.id} style={{ margin: '4px 0', color: '#64748b' }}>
+                            <strong>{r.title}</strong>
+                            {' — '}
+                            {t('user.fromOwner', { name: r.counterpartName })}
+                            {renderDateRange(r.rent_from, r.rent_to)}
+                            {' '}
+                            <span style={{ color: 'var(--c-green)', fontSize: '0.8rem' }}>✓ {t('user.returned')}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
     </div>
-    <div style={{ fontWeight: 500 }}>{ratingOverall.toFixed(2)}</div>
-  </div>
-)}
-</div>
-          <div className="card current-share">
-            <h1>{t('user.currentShare')}</h1>
-            {currentRents.filter(r => r.role === 'owner').length === 0 ? (
-              <p>{t('user.noneShare')}</p>
-            ) : (
-              <ul style={{ marginTop: 8 }}>
-                {currentRents.filter(r => r.role === 'owner').map(r => (
-                  <li key={r.id} style={{ margin: '6px 0' }}>
-                    <strong>{r.title}</strong>
-                    {r.rent_from || r.rent_to ? (
-                      <> ({r.rent_from ? new Date(r.rent_from).toLocaleDateString() : '—'} — {r.rent_to ? new Date(r.rent_to).toLocaleDateString() : '—'})</>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-          <div className="card current-borrow">
-            <h1>{t('user.currentBorrow')}</h1>
-            {currentRents.filter(r => r.role === 'borrower').length === 0 ? (
-              <p>{t('user.noneBorrow')}</p>
-            ) : (
-              <ul style={{ marginTop: 8 }}>
-                {currentRents.filter(r => r.role === 'borrower').map(r => (
-                  <li key={r.id} style={{ margin: '6px 0' }}>
-                    <strong>{r.title}</strong>
-                    {r.rent_from || r.rent_to ? (
-                      <> ({r.rent_from ? new Date(r.rent_from).toLocaleDateString() : '—'} — {r.rent_to ? new Date(r.rent_to).toLocaleDateString() : '—'})</>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-</div>
-</div>
-</section>
+  </section>
   );
 }
 

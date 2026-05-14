@@ -174,7 +174,7 @@ const Messages: React.FC<MessagesProps> = ({ messages, onMarkRead, onSendReply, 
                       return (
                         <div key={r.id} style={style}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                            <strong style={{ color: authorColor }}>{r.isMine ? 'You' : r.senderName}</strong>
+                            <strong style={{ color: authorColor }}>{r.isMine ? t('messages.you') : r.senderName}</strong>
                             <span style={{ color: timeColor, fontWeight: 600 }}>{r.time}</span>
                           </div>
                           <div style={{ color: r.isMine ? '#ffffff' : '#334155' }}>{r.text}</div>
@@ -217,6 +217,7 @@ export default Messages;
 
 // Inline rating prompt component using existing rating-table styles
 function RatingPrompt({ threadId, otherUserId, otherUserName, isOwner }: { threadId: string; otherUserId: string; otherUserName: string; isOwner: boolean }) {
+  const { t } = useTranslation();
   const [selected, setSelected] = React.useState<number>(0);
   const ratedKey = `rating_done_${threadId}_${otherUserId}`;
   const [done, setDone] = React.useState<boolean>(!!localStorage.getItem(ratedKey));
@@ -227,8 +228,7 @@ function RatingPrompt({ threadId, otherUserId, otherUserName, isOwner }: { threa
     try {
       const { data: auth } = await supabase.auth.getUser();
       const currentUserId = auth.user?.id;
-      if (!currentUserId) { alert('Musisz być zalogowany'); return; }
-      // Oceniany ma odwrotną rolę
+      if (!currentUserId) { alert(t('messages.mustBeLoggedIn')); return; }
       const rateeRole = isOwner ? 'borrower' : 'owner';
       await submitUserRating({
         rateeId: otherUserId,
@@ -240,17 +240,17 @@ function RatingPrompt({ threadId, otherUserId, otherUserName, isOwner }: { threa
       setSelected(value);
       localStorage.setItem(ratedKey, '1');
       setDone(true);
-      setThanks('Dziękujemy za ocenę!');
+      setThanks(t('messages.thankYouForRating'));
     } catch (e: any) {
-      setThanks(e?.message ?? 'Nie udało się zapisać oceny');
+      setThanks(e?.message ?? t('messages.ratingFailed'));
     }
   };
 
   return (
     <div className="card" style={{ marginTop: 8 }}>
-      <div style={{ fontWeight: 700, marginBottom: 6 }}>Oceń {otherUserName}</div>
+      <div style={{ fontWeight: 700, marginBottom: 6 }}>{t('messages.rateUser', { name: otherUserName })}</div>
       {done ? (
-        <div style={{ fontSize: 14, color: '#065f46' }}>{thanks || 'Dziękujemy za ocenę!'}</div>
+        <div style={{ fontSize: 14, color: '#065f46' }}>{thanks || t('messages.thankYouForRating')}</div>
       ) : (
         <>
           <div className="rating-table" style={{ justifyContent: 'flex-start' }}>
@@ -262,7 +262,7 @@ function RatingPrompt({ threadId, otherUserId, otherUserName, isOwner }: { threa
             ))}
           </div>
           <div style={{ fontSize: 12, color: '#64748b', marginTop: 6 }}>
-            Możesz ocenić tylko raz po akceptacji wypożyczenia.
+            {t('messages.rateOnce')}
           </div>
         </>
       )}

@@ -1,6 +1,7 @@
 import React from 'react';
 import { useSearchParams } from 'react-router-dom';
 import dayjs, { Dayjs } from 'dayjs';
+import { formatDate, formatDateTime } from '../utils/dateFormat';
 import Calendar from './Calendar';
 import { useTranslation } from 'react-i18next';
 import {
@@ -942,7 +943,7 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
                         }}>
                           <div className="calendar-list__title">{resName}</div>
                           <div className="calendar-list__meta">
-                            {dayjs(ev.start).format('YYYY-MM-DD')} – {dayjs(ev.end).subtract(1, 'day').format('YYYY-MM-DD')}
+                            {formatDate(ev.start)} – {formatDate(dayjs(ev.end).subtract(1, 'day').toISOString())}
                           </div>
                           <div className="calendar-list__borrower">{ev.text}</div>
                         </li>
@@ -1024,12 +1025,13 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
                       showInitial={false}
                       intensity3d="subtle"
                       interactive={false}
+                      enableBlink={false}
                       style={{ borderRadius: '50%', overflow: 'hidden', flexShrink: 0 }}
                     />
                     <div className="request-title">
                       <div className="requester-name">{it.requesterName || 'User'}</div>
                       <div className="request-meta">
-                        {new Date(it.createdAt).toLocaleString()}
+                        {formatDateTime(it.createdAt)}
                       </div>
                     </div>
                   </div>
@@ -1039,7 +1041,7 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
                       requesterName={it.requesterName}
                       periodFrom={it.periodFrom ?? null}
                       periodTo={it.periodTo ?? null}
-                      createdAt={new Date(it.createdAt).toLocaleString()}
+                      createdAt={formatDateTime(it.createdAt)}
                     />
                   </div>
                   {acceptedByBook[it.bookId]?.threadId === it.threadId ? (
@@ -1123,7 +1125,7 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
                       if (qe?.status === 'proposed') {
                         return (
                           <div className="request-chip request-chip--info">
-                            {t('requests.pendingProposal')}: {qe.proposedFrom} – {qe.proposedTo}
+                            {t('requests.pendingProposal')}: {formatDate(qe.proposedFrom)} – {formatDate(qe.proposedTo)}
                           </div>
                         );
                       }
@@ -1131,7 +1133,7 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
                       if (qe?.status === 'accepted') {
                         return (
                           <div className="request-chip request-chip--queued">
-                            {t('requests.queuedBorrower')}: {qe.proposedFrom} – {qe.proposedTo}
+                            {t('requests.queuedBorrower')}: {formatDate(qe.proposedFrom)} – {formatDate(qe.proposedTo)}
                           </div>
                         );
                       }
@@ -1209,11 +1211,12 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
                       showInitial={false}
                       intensity3d="subtle"
                       interactive={false}
+                      enableBlink={false}
                       style={{ borderRadius: '50%', overflow: 'hidden', flexShrink: 0 }}
                     />
                     <div className="request-title">
                       <div className="requester-name">{it.requesterName || 'Owner'}</div>
-                      <div className="request-meta">{new Date(it.createdAt).toLocaleString()}</div>
+                      <div className="request-meta">{formatDateTime(it.createdAt)}</div>
                     </div>
                   </div>
                   <div className="request-body">
@@ -1222,7 +1225,7 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
                       requesterName={it.requesterName}
                       periodFrom={it.periodFrom ?? null}
                       periodTo={it.periodTo ?? null}
-                      createdAt={new Date(it.createdAt).toLocaleString()}
+                      createdAt={formatDateTime(it.createdAt)}
                       isMine
                     />
                   </div>
@@ -1232,7 +1235,7 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
                     if (qe.status === 'accepted') {
                       return (
                         <div className="request-chip request-chip--queued">
-                          {t('requests.borrowerAccepted')}: {qe.proposedFrom} – {qe.proposedTo}
+                          {t('requests.borrowerAccepted')}: {formatDate(qe.proposedFrom)} – {formatDate(qe.proposedTo)}
                         </div>
                       );
                     }
@@ -1249,7 +1252,7 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
                       <div className="proposed-date-banner">
                         <div className="proposed-date-info">
                           <strong>{t('requests.ownerProposedDate')}:</strong>{' '}
-                          {qe.proposedFrom} – {qe.proposedTo}
+                          {formatDate(qe.proposedFrom)} – {formatDate(qe.proposedTo)}
                         </div>
                         <div className="request-actions">
                           <button
@@ -1294,12 +1297,13 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
                       showInitial={false}
                       intensity3d="subtle"
                       interactive={false}
+                      enableBlink={false}
                       style={{ borderRadius: '50%', overflow: 'hidden', flexShrink: 0 }}
                     />
                     <div className="request-title">
                       <div className="requester-name">{it.requesterName || 'User'}</div>
                       <div className="request-meta">
-                        {new Date(it.createdAt).toLocaleString()}
+                        {formatDateTime(it.createdAt)}
                       </div>
                     </div>
                   </div>
@@ -1309,7 +1313,7 @@ const Requests: React.FC<RequestsProps> = ({ onRefreshBooks }) => {
                       requesterName={it.requesterName}
                       periodFrom={it.periodFrom ?? null}
                       periodTo={it.periodTo ?? null}
-                      createdAt={new Date(it.createdAt).toLocaleString()}
+                      createdAt={formatDateTime(it.createdAt)}
                     />
                   </div>
                   <div className="request-chip request-chip--archived">

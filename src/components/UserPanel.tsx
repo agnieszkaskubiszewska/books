@@ -4,6 +4,7 @@ import { supabase } from '../supabase';
 import { Book, Genre } from '../types';
 import { Facehash } from 'facehash';
 import { AVATAR_PALETTES } from '../avatarPalettes';
+import { useTranslation } from 'react-i18next';
 
 interface UserPanelProps {
   currentUserId: string | null;
@@ -14,12 +15,13 @@ interface UserPanelProps {
 const UserPanel: React.FC<UserPanelProps> = ({ currentUserId, isLoggedIn, onSendDirectMessage }) => {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const [profileUser, setProfileUser] = useState<{
     id: string;
     first_name: string | null;
     last_name: string | null;
-    bio: string | null;
+    about: string | null;
     owner_rating: number | null;
     borrower_rating: number | null;
     avatar_palette: number | null;
@@ -36,7 +38,7 @@ const UserPanel: React.FC<UserPanelProps> = ({ currentUserId, isLoggedIn, onSend
     (async () => {
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('id, first_name, last_name, bio, owner_rating, borrower_rating, avatar_palette')
+        .select('id, first_name, last_name, about, owner_rating, borrower_rating, avatar_palette')
         .eq('id', userId)
         .single();
       if (userError || !userData) {
@@ -82,7 +84,7 @@ const UserPanel: React.FC<UserPanelProps> = ({ currentUserId, isLoggedIn, onSend
   if (loading) {
     return (
       <section className="section">
-        <div className="container"><p>Ładowanie...</p></div>
+        <div className="container"><p>{t('common.loading')}</p></div>
       </section>
     );
   }
@@ -90,7 +92,7 @@ const UserPanel: React.FC<UserPanelProps> = ({ currentUserId, isLoggedIn, onSend
   if (!profileUser) {
     return (
       <section className="section">
-        <div className="container"><p>Nie znaleziono użytkownika.</p></div>
+        <div className="container"><p>{t('userPanel.notFound')}</p></div>
       </section>
     );
   }
@@ -122,8 +124,8 @@ const UserPanel: React.FC<UserPanelProps> = ({ currentUserId, isLoggedIn, onSend
               />
               <h1 style={{ margin: 0 }}>{fullName}</h1>
             </div>
-            {profileUser.bio && (
-              <p style={{ marginTop: 8, color: '#475569' }}>{profileUser.bio}</p>
+            {profileUser.about && (
+              <p style={{ marginTop: 8, color: '#475569' }}>{profileUser.about}</p>
             )}
             {ratingOverall !== null && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
@@ -139,14 +141,14 @@ const UserPanel: React.FC<UserPanelProps> = ({ currentUserId, isLoggedIn, onSend
               <div style={{ marginTop: 16 }}>
                 {!showMessageForm ? (
                   <button className="btn" onClick={() => setShowMessageForm(true)}>
-                    Wyślij wiadomość
+                    {t('userPanel.sendMessage')}
                   </button>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     <textarea
                       value={messageText}
                       onChange={(e) => setMessageText(e.target.value)}
-                      placeholder={`Napisz wiadomość do ${fullName}...`}
+                      placeholder={t('userPanel.writeMessageTo', { name: fullName }) as string}
                       rows={3}
                       style={{ width: '100%', padding: 10, borderRadius: 12, border: '1px solid #e5e7eb', resize: 'vertical' }}
                     />
@@ -155,14 +157,14 @@ const UserPanel: React.FC<UserPanelProps> = ({ currentUserId, isLoggedIn, onSend
                         className="btn btn--ghost"
                         onClick={() => { setShowMessageForm(false); setMessageText(''); }}
                       >
-                        Anuluj
+                        {t('messages.cancel')}
                       </button>
                       <button
                         className="btn"
                         disabled={!messageText.trim() || sending}
                         onClick={handleSendMessage}
                       >
-                        {sending ? 'Wysyłanie...' : 'Wyślij'}
+                        {sending ? t('userPanel.sending') : t('messages.send')}
                       </button>
                     </div>
                   </div>
@@ -172,9 +174,9 @@ const UserPanel: React.FC<UserPanelProps> = ({ currentUserId, isLoggedIn, onSend
           </div>
 
           <div className="card">
-            <h2>Książki oferowane przez {fullName} ({userBooks.length})</h2>
+            <h2>{t('userPanel.offeredBooks', { name: fullName, count: userBooks.length })}</h2>
             {userBooks.length === 0 ? (
-              <p style={{ marginTop: 8 }}>Ten użytkownik nie oferuje jeszcze żadnych książek.</p>
+              <p style={{ marginTop: 8 }}>{t('userPanel.noBooks')}</p>
             ) : (
               <div className="books-mosaic" style={{ marginTop: 16 }}>
                 {userBooks.map(book => (
@@ -185,19 +187,19 @@ const UserPanel: React.FC<UserPanelProps> = ({ currentUserId, isLoggedIn, onSend
                       </div>
                     )}
                     <h3>{book.title}</h3>
-                    <p><strong>Autor:</strong> {book.author}</p>
-                    <p><strong>Rok:</strong> {book.year}</p>
+                    <p><strong>{t('books.labels.author')}:</strong> {book.author}</p>
+                    <p><strong>{t('books.labels.year')}:</strong> {book.year}</p>
                     {book.rating && (
-                      <p><strong>Ocena:</strong> {'⭐'.repeat(book.rating)} ({book.rating}/5)</p>
+                      <p><strong>{t('books.labels.rating')}:</strong> {'⭐'.repeat(book.rating)} ({book.rating}/5)</p>
                     )}
                     {!book.rent && (
-                      <p style={{ color: '#b91c1c', fontWeight: 700 }}>Aktualnie wypożyczona</p>
+                      <p style={{ color: '#b91c1c', fontWeight: 700 }}>{t('books.currentlyRented')}</p>
                     )}
                     {book.rentRegion && (
-                      <p><strong>Region:</strong> {book.rentRegion}</p>
+                      <p><strong>{t('books.labels.rentRegion')}:</strong> {book.rentRegion}</p>
                     )}
                     {book.description && (
-                      <p><strong>Opis:</strong> {book.description}</p>
+                      <p><strong>{t('books.labels.description')}:</strong> {book.description}</p>
                     )}
                   </div>
                 ))}
