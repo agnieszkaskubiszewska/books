@@ -22,9 +22,12 @@ interface BookListProps {
   requestedRentDates?: Record<string, { from: string | null; to: string | null }>;
   pendingRequestBookIds?: Set<string>;
   myRentedBookIds?: Set<string>;
+  booksLoading?: boolean;
+  ownerNames?: Record<string, string>;
+  rentCountMap?: Record<string, number>;
 }
 
-const BookList: React.FC<BookListProps> = ({ books, onDeleteBook, isLoggedIn, onRent, isAdmin, requestedRentDates, pendingRequestBookIds, myRentedBookIds }) => {
+const BookList: React.FC<BookListProps> = ({ books, onDeleteBook, isLoggedIn, onRent, isAdmin, requestedRentDates, pendingRequestBookIds, myRentedBookIds, booksLoading, ownerNames: ownerNamesProp, rentCountMap: rentCountMapProp }) => {
   const { t } = useTranslation();
   const getGenreName = (genre: Genre): string => {
     // tłumaczenie nazw gatunków przez i18n
@@ -69,8 +72,8 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
   const navigate = useNavigate();
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const modalAnchorRef = useRef<HTMLDivElement | null>(null);
-  const [ownerNames, setOwnerNames] = useState<Record<string, string>>({});
-  const [rentCountMap, setRentCountMap] = useState<Record<string, number>>({});
+  const ownerNames = ownerNamesProp ?? {};
+  const rentCountMap = rentCountMapProp ?? {};
 
   const filteredBooks = useMemo(() => {
     return books.filter(book => {
@@ -114,68 +117,23 @@ const [rentFilter, setRentFilter] = useState<'all' | 'rentable' | 'not_rentable'
     // no-op: przewijamy przed otwarciem modalu w handlerze kliknięcia
   }, [selectedBook]);
     
-  useEffect(() => {
-    (async () => {
-      try {
-        const ownerIds = Array.from(
-          new Set(
-            (books || [])
-              .map(b => b.ownerId)
-              .filter((id): id is string => !!id)
-          )
-        );
-        if (ownerIds.length === 0) {
-          setOwnerNames({});
-          return;
-        }
-        const { data, error } = await supabase
-          .from('users')
-          .select('id, first_name, last_name')
-          .in('id', ownerIds);
-        if (error) {
-          console.error('Error fetching owners:', error);
-          setOwnerNames({});
-          return;
-        }
-        const map: Record<string, string> = {};
-        (data || []).forEach((u: any) => {
-          const full = [u.first_name, u.last_name].filter(Boolean).join(' ');
-          map[String(u.id)] = full;
-        });
-        setOwnerNames(map);
-      } catch (e) {
-        console.error('Unexpected error fetching owners:', e);
-        setOwnerNames({});
-      }
-    })();
-  }, [books]);
 
-  // Wczytaj statystyki wypożyczeń dla dostępnych książek i zbuduj mapę id -> rent_count
-  useEffect(() => {
-    (async () => {
-      try {
-        const bookIds = (books || []).map(b => b.id);
-        if (bookIds.length === 0) { setRentCountMap({}); return; }
-        const { data, error } = await supabase
-          .from('books_with_rent_stats')
-          .select('id, rent_count')
-          .in('id', bookIds);
-        if (error) { console.error('Error fetching rent stats:', error); setRentCountMap({}); return; }
-        const map: Record<string, number> = {};
-        (data || []).forEach((row: any) => { map[String(row.id)] = Number(row.rent_count ?? 0); });
-        setRentCountMap(map);
-      } catch (e) {
-        console.error('Unexpected error fetching rent stats:', e);
-        setRentCountMap({});
-      }
-    })();
-  }, [books]);
 
+  if (booksLoading) {
+    return (
+      <div className="book-list">
+        <h2>{t('books.title')}</h2>
+        <div className="loading-container" style={{ minHeight: 'unset', paddingTop: '2rem' }}>
+          <div className="loading-spinner" />
+        </div>
+      </div>
+    );
+  }
 
   if (books.length === 0) {
     return (
       <div className="book-list">
-    <h2>{t('books.title')}</h2>
+        <h2>{t('books.title')}</h2>
         <p>{t('books.noResults')}</p>
       </div>
     );
