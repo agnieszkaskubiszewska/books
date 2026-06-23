@@ -16,13 +16,17 @@ import UserPanel from './components/UserPanel';
 import { Book, Section, Genre } from './types';
 import { supabase } from './supabase';
 import { fetchMessagesForUser,getOrCreateThread as sbGetOrCreateThread, getOrCreateDirectThread as sbGetOrCreateDirectThread, sendMessage as sbSendMessage, markMessageRead as sbMarkMessageRead, createRent as sbCreateRent, closeThread as sbCloseThread, type DbMessage } from './supabase';
+import { consumeOrFetchBooks } from './prefetch';
 
 const BOOKS_CACHE_KEY = 'bookake_books_cache';
+
+const CACHE_TTL_MS = 2 * 60 * 1000;
 
 interface BooksCache {
   books: Book[];
   ownerNames: Record<string, string>;
   rentCountMap: Record<string, number>;
+  cachedAt: number;
 }
 
 function loadBooksCache(): BooksCache | null {
@@ -35,9 +39,9 @@ function loadBooksCache(): BooksCache | null {
   }
 }
 
-function saveBooksCache(data: BooksCache) {
+function saveBooksCache(data: Omit<BooksCache, 'cachedAt'>) {
   try {
-    localStorage.setItem(BOOKS_CACHE_KEY, JSON.stringify(data));
+    localStorage.setItem(BOOKS_CACHE_KEY, JSON.stringify({ ...data, cachedAt: Date.now() }));
   } catch {}
 }
 
@@ -126,17 +130,10 @@ const AppContent: React.FC = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Funkcja do odświeżania listy książek (równolegle pobiera też nazwy właścicieli i statystyki)
+  // Funkcja do odświeżania listy książek — owner names pobierane przez JOIN, bez osobnego zapytania
   const refreshBooks = async () => {
     try {
-      const [booksResult, statsResult] = await Promise.all([
-        supabase
-          .from('books')
-          .select('id,title,author,description,year,genre,rating,image,created_at,rent,rent_region,owner_id'),
-        supabase
-          .from('books_with_rent_stats')
-          .select('id,rent_count'),
-      ]);
+      const [booksResult, statsResult] = await consumeOrFetchBooks();
 
       if (booksResult.error) {
         console.error('Error fetching books:', booksResult.error);
@@ -158,20 +155,13 @@ const AppContent: React.FC = () => {
         ownerId: row.owner_id ?? undefined,
       }));
 
-      const ownerIds = Array.from(
-        new Set(mapped.map(b => b.ownerId).filter((id): id is string => !!id))
-      );
-
-      const [ownersResult] = await Promise.all([
-        ownerIds.length > 0
-          ? supabase.from('users').select('id,first_name,last_name').in('id', ownerIds)
-          : Promise.resolve({ data: [], error: null }),
-      ]);
-
+      // Owner names z JOIN — bez osobnego round-tripu do bazy
       const newOwnerNames: Record<string, string> = {};
-      ((ownersResult as any).data || []).forEach((u: any) => {
-        const full = [u.first_name, u.last_name].filter(Boolean).join(' ');
-        newOwnerNames[String(u.id)] = full;
+      (booksResult.data || []).forEach((row: any) => {
+        if (row.users && row.owner_id) {
+          const full = [row.users.first_name, row.users.last_name].filter(Boolean).join(' ');
+          newOwnerNames[String(row.owner_id)] = full;
+        }
       });
 
       const newRentCountMap: Record<string, number> = {};
@@ -201,6 +191,7 @@ const AppContent: React.FC = () => {
       setOwnerNames(cache.ownerNames);
       setRentCountMap(cache.rentCountMap);
       setBooksLoading(false);
+      if (Date.now() - cache.cachedAt < CACHE_TTL_MS) return;
     }
     refreshBooks();
   }, []);
