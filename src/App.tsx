@@ -20,6 +20,9 @@ import { fetchMessagesForUser,getOrCreateThread as sbGetOrCreateThread, getOrCre
 const AppContent: React.FC = () => {
   const navigate = useNavigate();
   const [books, setBooks] = useState<Book[]>([]);
+  const [booksLoading, setBooksLoading] = useState(true);
+  const [ownerNames, setOwnerNames] = useState<Record<string, string>>({});
+  const [rentCountMap, setRentCountMap] = useState<Record<string, number>>({});
 
   const [currentSection, setCurrentSection] = useState<Section>('welcome');
   const [notification, setNotification] = useState<{ message: string; type?: 'success' | 'error' | 'info' } | null>(null);
@@ -99,39 +102,72 @@ const AppContent: React.FC = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Funkcja do odświeżania listy książek
+  // Funkcja do odświeżania listy książek (równolegle pobiera też nazwy właścicieli i statystyki)
   const refreshBooks = async () => {
-      try {
-        const { data, error } = await supabase
+    setBooksLoading(true);
+    try {
+      const [booksResult, statsResult] = await Promise.all([
+        supabase
           .from('books')
-          .select('id,title,author,description,year,genre,rating,image,created_at,rent,rent_region,owner_id');
+          .select('id,title,author,description,year,genre,rating,image,created_at,rent,rent_region,owner_id'),
+        supabase
+          .from('books_with_rent_stats')
+          .select('id,rent_count'),
+      ]);
 
-        if (error) {
-          console.error('Error fetching books:', error);
-  showNotification(`Error fetching books: ${error.message}`, 'error');
-          return;
-        }
-
-        const mapped: Book[] = (data || []).map((row: any) => ({
-          id: String(row.id),
-          title: row.title,
-          author: row.author,
-          description: row.description ?? '',
-          year: typeof row.year === 'number' ? row.year : (row.created_at ? new Date(row.created_at).getFullYear() : new Date().getFullYear()),
-          genre: (row.genre as Genre) ?? ('other' as Genre),
-          rating: row.rating ?? undefined,
-          image: row.image ?? undefined,
-          rent: !!row.rent,
-          rentRegion: row.rent_region ?? undefined,
-          ownerId: row.owner_id ?? undefined,
-        }));
-
-        setBooks(mapped);
-      } catch (err: any) {
-        console.error('Unexpected error fetching books:', err);
-        showNotification('Unexpected error fetching books', 'error');
+      if (booksResult.error) {
+        console.error('Error fetching books:', booksResult.error);
+        showNotification(`Error fetching books: ${booksResult.error.message}`, 'error');
+        return;
       }
-    };
+
+      const mapped: Book[] = (booksResult.data || []).map((row: any) => ({
+        id: String(row.id),
+        title: row.title,
+        author: row.author,
+        description: row.description ?? '',
+        year: typeof row.year === 'number' ? row.year : (row.created_at ? new Date(row.created_at).getFullYear() : new Date().getFullYear()),
+        genre: (row.genre as Genre) ?? ('other' as Genre),
+        rating: row.rating ?? undefined,
+        image: row.image ?? undefined,
+        rent: !!row.rent,
+        rentRegion: row.rent_region ?? undefined,
+        ownerId: row.owner_id ?? undefined,
+      }));
+
+      const ownerIds = Array.from(
+        new Set(mapped.map(b => b.ownerId).filter((id): id is string => !!id))
+      );
+
+      const [ownersResult] = await Promise.all([
+        ownerIds.length > 0
+          ? supabase.from('users').select('id,first_name,last_name').in('id', ownerIds)
+          : Promise.resolve({ data: [], error: null }),
+      ]);
+
+      const newOwnerNames: Record<string, string> = {};
+      ((ownersResult as any).data || []).forEach((u: any) => {
+        const full = [u.first_name, u.last_name].filter(Boolean).join(' ');
+        newOwnerNames[String(u.id)] = full;
+      });
+
+      const newRentCountMap: Record<string, number> = {};
+      if (!statsResult.error) {
+        (statsResult.data || []).forEach((row: any) => {
+          newRentCountMap[String(row.id)] = Number(row.rent_count ?? 0);
+        });
+      }
+
+      setBooks(mapped);
+      setOwnerNames(newOwnerNames);
+      setRentCountMap(newRentCountMap);
+    } catch (err: any) {
+      console.error('Unexpected error fetching books:', err);
+      showNotification('Unexpected error fetching books', 'error');
+    } finally {
+      setBooksLoading(false);
+    }
+  };
 
   // Pobieranie listy wszystkich książek z bazy danych przy starcie aplikacji
   useEffect(() => {
@@ -737,6 +773,9 @@ if (!window.confirm(`Are you sure you want to delete the book "${bookToDelete.ti
         requestedRentDates={requestedRentDatesMergedByBook}
         pendingRequestBookIds={pendingRequestBookIds}
         myRentedBookIds={myRentedBookIds}
+        booksLoading={booksLoading}
+        ownerNames={ownerNames}
+        rentCountMap={rentCountMap}
       />
     } />
           <Route path="/user-details" element={isLoggedIn && user ? <UserDetails user={user} onAvatarPaletteChange={setUserAvatarPalette} /> : <Navigate to="/login" />} />
