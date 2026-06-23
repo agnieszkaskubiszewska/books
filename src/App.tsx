@@ -17,6 +17,30 @@ import { Book, Section, Genre } from './types';
 import { supabase } from './supabase';
 import { fetchMessagesForUser,getOrCreateThread as sbGetOrCreateThread, getOrCreateDirectThread as sbGetOrCreateDirectThread, sendMessage as sbSendMessage, markMessageRead as sbMarkMessageRead, createRent as sbCreateRent, closeThread as sbCloseThread, type DbMessage } from './supabase';
 
+const BOOKS_CACHE_KEY = 'bookake_books_cache';
+
+interface BooksCache {
+  books: Book[];
+  ownerNames: Record<string, string>;
+  rentCountMap: Record<string, number>;
+}
+
+function loadBooksCache(): BooksCache | null {
+  try {
+    const raw = localStorage.getItem(BOOKS_CACHE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as BooksCache;
+  } catch {
+    return null;
+  }
+}
+
+function saveBooksCache(data: BooksCache) {
+  try {
+    localStorage.setItem(BOOKS_CACHE_KEY, JSON.stringify(data));
+  } catch {}
+}
+
 const AppContent: React.FC = () => {
   const navigate = useNavigate();
   const [books, setBooks] = useState<Book[]>([]);
@@ -104,7 +128,6 @@ const AppContent: React.FC = () => {
 
   // Funkcja do odświeżania listy książek (równolegle pobiera też nazwy właścicieli i statystyki)
   const refreshBooks = async () => {
-    setBooksLoading(true);
     try {
       const [booksResult, statsResult] = await Promise.all([
         supabase
@@ -161,6 +184,7 @@ const AppContent: React.FC = () => {
       setBooks(mapped);
       setOwnerNames(newOwnerNames);
       setRentCountMap(newRentCountMap);
+      saveBooksCache({ books: mapped, ownerNames: newOwnerNames, rentCountMap: newRentCountMap });
     } catch (err: any) {
       console.error('Unexpected error fetching books:', err);
       showNotification('Unexpected error fetching books', 'error');
@@ -171,6 +195,13 @@ const AppContent: React.FC = () => {
 
   // Pobieranie listy wszystkich książek z bazy danych przy starcie aplikacji
   useEffect(() => {
+    const cache = loadBooksCache();
+    if (cache) {
+      setBooks(cache.books);
+      setOwnerNames(cache.ownerNames);
+      setRentCountMap(cache.rentCountMap);
+      setBooksLoading(false);
+    }
     refreshBooks();
   }, []);
 
