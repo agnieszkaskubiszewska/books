@@ -21,7 +21,7 @@ const Footer: React.FC = () => {
           flexWrap: "wrap"
         }}
       >
-        <div style={{ fontSize: 14, color: "#64748b" }}>
+        <div style={{ fontSize: 14, color: "#475569" }}>
           © {year} Book App — {t("footer_rights")}
         </div>
 
